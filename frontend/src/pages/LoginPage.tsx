@@ -20,7 +20,7 @@ const LoginPage = () => {
       console.log("🚀 Starting Login via FETCH...");
 
       // 1. Direct Fetch Call (Bypassing Axios)
-      const response = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev', {
+      const response = await fetch('https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // Sending all possible field names to ensure backend accepts it
@@ -30,7 +30,7 @@ const LoginPage = () => {
               user: username,
               senha: password, 
               password: password 
-          }) 
+          })
       });
 
       const data = await response.json();
@@ -70,7 +70,7 @@ const LoginPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2">MCSA</h1>
-          <p className="text-slate-500 font-medium">Faça login para acesaar o Dashboard.</p>
+          <p className="text-slate-500 font-medium">Login to access the dashboard.</p>
         </div>
 
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50">

@@ -7,7 +7,7 @@
 
 import type { ChamadoForm } from '../types/chamado';
 // URL base da API (ajuste conforme ambiente: dev/prod)
-const API_URL = '  https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev'; 
+const API_URL = 'https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev'; 
 
 /**
  * Envia uma requisição POST para o backend solicitando a abertura de um chamado no ClickUp.

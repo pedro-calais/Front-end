@@ -79,10 +79,10 @@ const AbrirChamado = () => {
 
   // Listas Dinâmicas
   const [parcelas, setParcelas] = useState<ParcelaItem[]>([{ vencimento: "", valor: 0, tipo: "" }]);
-  const [devolucoes, setDevolucoes] = useState<DevolucaoItem[]>([{ vencimento: "", valor: 0, parcela: "" }]);
+  const [devolucoes] = useState<DevolucaoItem[]>([{ vencimento: "", valor: 0, parcela: "" }]);
   const [alteracoes, setAlteracoes] = useState<AlteracaoVinculoItem[]>([{ campanha: "", credor: "", cpf: "", nome: "" }]);
-  const [quebras, setQuebras] = useState<QuebraAcordoItem[]>([{ campanha: "", n_acordo: "" }]);
-  const [ligacoes, setLigacoes] = useState<LigacaoItem[]>([{ numero: "", hora: "" }]);
+  const [quebras] = useState<QuebraAcordoItem[]>([{ campanha: "", n_acordo: "" }]);
+  const [ligacoes] = useState<LigacaoItem[]>([{ numero: "", hora: "" }]);
 
   // --- CARREGAR DADOS ---
   useEffect(() => {

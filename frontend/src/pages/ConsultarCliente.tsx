@@ -1,15 +1,9 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom"; // Import do Link para o MCSA funcionar
-import { 
-  Search, 
+import {   
   Loader2, 
   ChevronRight, 
   AlertCircle, 
-  ArrowLeft,
-  User,
-  FileText,
-  Clock,
-  CheckCircle
 } from "lucide-react";
 import { clienteService, type Cliente, type DetalhesCliente } from "../services/clienteService";
 

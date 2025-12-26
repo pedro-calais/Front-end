@@ -6,12 +6,10 @@ import {
   ChevronDown,
   Users,
   Phone,
-  MessageSquare,
   CheckCircle2,
   TrendingUp,
   Download,
   Search,
-  User
 } from "lucide-react";
 
 // --- MOCK DATA ---

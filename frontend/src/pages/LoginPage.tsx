@@ -20,7 +20,7 @@ const LoginPage = () => {
       console.log("🚀 Starting Login via FETCH...");
 
       // 1. Direct Fetch Call (Bypassing Axios)
-      const response = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev -> http://localhost:5000', {
+      const response = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // Sending all possible field names to ensure backend accepts it

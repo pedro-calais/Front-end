@@ -1,0 +1,12 @@
+# Dependências do Node (Frontend)
+node_modules/
+dist/
+build/
+.env
+
+# Dependências do Python (Backend)
+venv/
+__pycache__/
+*.pyc
+instance/
+.pytest_cache/

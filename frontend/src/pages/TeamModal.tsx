@@ -76,8 +76,8 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
 
     try {
         const url = editingUser 
-            ? `http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
-            : `http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
+            ? ` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
+            : ` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
             
         const method = editingUser ? 'PUT' : 'POST';
 

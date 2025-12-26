@@ -56,7 +56,7 @@ export default function ResumoObjetivos() {
 
   useEffect(() => {
     // Busca lista de credores
-    fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-credores")
+    fetch(" https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-credores")
       .then(res => res.json())
       .then(data => Array.isArray(data) && setListaCredores(data))
       .catch(err => console.error(err));

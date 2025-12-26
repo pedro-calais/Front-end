@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
 import { Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 
 const LoginPage = () => {
-  const navigate = useNavigate();
+ 
   
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

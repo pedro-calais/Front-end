@@ -89,7 +89,7 @@ function AdminDashboard({ user, onLogout }: any) {
   const [stats, setStats] = useState({ total: 0, ativos: 0 });
 
   useEffect(() => {
-    fetch("http://localhost:5000/users")
+    fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users")
       .then((res) => { 
           if (res.ok) return res.json(); 
           throw new Error("Erro API");

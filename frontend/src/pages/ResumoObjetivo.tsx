@@ -56,7 +56,7 @@ export default function ResumoObjetivos() {
 
   useEffect(() => {
     // Busca lista de credores
-    fetch("http://localhost:5000/api/lista-credores")
+    fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-credores")
       .then(res => res.json())
       .then(data => Array.isArray(data) && setListaCredores(data))
       .catch(err => console.error(err));
@@ -70,7 +70,7 @@ export default function ResumoObjetivos() {
     try {
       const credoresParaEnviar = credorSelecionado ? [credorSelecionado] : [];
       // ATENÇÃO: Rota específica para este painel
-      const response = await fetch("http://localhost:5000/api/resumo-objetivos", {
+      const response = await fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/resumo-objetivos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data_inicio: dataInicio, data_fim: dataFim, credores: credoresParaEnviar })

@@ -22,7 +22,7 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/users");
+      const response = await fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users");
       if (!response.ok) throw new Error('Falha ao buscar');
       
       const data = await response.json();
@@ -48,7 +48,7 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const handleDelete = async (id: number) => {
     if (confirm("Tem certeza que deseja inativar/remover este usuário?")) {
       try {
-        await fetch(`http://localhost:5000/users/${id}`, { method: 'DELETE' });
+        await fetch(`http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${id}`, { method: 'DELETE' });
         // Atualiza lista localmente para ser rápido
         setUsers(users.filter(u => u.id !== id));
       } catch (error) {
@@ -76,8 +76,8 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
 
     try {
         const url = editingUser 
-            ? `http://localhost:5000/users/${editingUser.id}` 
-            : `http://localhost:5000/users`;
+            ? `http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
+            : `http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
             
         const method = editingUser ? 'PUT' : 'POST';
 

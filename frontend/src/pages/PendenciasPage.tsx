@@ -48,7 +48,7 @@ export default function PendenciasPage() {
   useEffect(() => {
     const carregarTarefas = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/pendencias");
+        const response = await fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/pendencias");
         if (response.ok) {
           const data = await response.json();
           setTarefas(data);
@@ -136,7 +136,7 @@ export default function PendenciasPage() {
   const handleConcluirTarefa = async (id: string) => {
     setAtualizandoId(id); 
     try {
-      const response = await fetch(`http://localhost:5000/api/pendencias/${id}/concluir`, {
+      const response = await fetch(`http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/pendencias/${id}/concluir`, {
         method: "POST",
       });
 

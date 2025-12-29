@@ -227,44 +227,70 @@ def get_dados_composicao_especifico(filtros, engine):
         print("🔍 [DEBUG] Processando linhas do SQL:")
 
         for row in result:
-            # Normaliza o status para maiúsculo para facilitar a comparação
+            # Normaliza o status para maiúsculo
             status = str(row.status).upper().strip() if row.status else "SEM STATUS"
             
-            # Pega valores garantindo float
+            # Garante que os valores sejam números
             v_orig = float(row.total_original or 0)
             v_pago = float(row.total_pago or 0)
 
+            # Debug para ver o que está acontecendo
             print(f"   -> Status: {status} | Orig: {v_orig} | Pago: {v_pago}")
 
-            # --- SOMAS DE COMPOSIÇÃO (Valores em Aberto) ---
-            composicao["totalCasos"] += v_orig
-
-            if "NOVO" in status:
-                composicao["casosNovos"] += v_orig
-            elif "PREVIS" in status or "PREVISAO" in status: # Pega 'Previsão' e 'Previsao'
-                composicao["acordosVencer"] += v_orig
-            elif "CORRENTE" in status:
-                composicao["colchaoCorrente"] += v_orig
-            elif "INADIMPLIDO" in status:
-                composicao["colchaoInadimplido"] += v_orig
-            else:
-                # Se sobrar algo (ex: 'VERIFICAR'), somamos no corrente por segurança ou logamos
-                print(f"⚠️ Status não mapeado na composição: {status}")
-                composicao["colchaoCorrente"] += v_orig
-
-            # --- SOMAS DE REALIZADO (Valores Pagos) ---
+            # ---------------------------------------------------------
+            # 1. MAPEAMENTO DO "REALIZADO" (Dinheiro no Caixa)
+            # ---------------------------------------------------------
             realizado["caixaTotal"] += v_pago
 
             if v_pago > 0:
-                # Aqui a lógica pode ser diferente dependendo de como você classifica o pagamento
-                if "NOVO" in status:
+                if "LIQUIDADO" in status:
+                    # Se foi liquidado (pago), consideramos sucesso
+                    # Você pode decidir se joga em 'novosAcordos' ou distribui
+                    realizado["novosAcordos"] += v_pago 
+                elif "ACORDO" in status:
                     realizado["novosAcordos"] += v_pago
-                elif "PREVIS" in status or "ANTECIPADO" in status:
+                elif "ANTECIPADO" in status:
                     realizado["colchaoAntecipado"] += v_pago
                 elif "CORRENTE" in status:
                     realizado["colchaoCorrente"] += v_pago
                 elif "INADIMPLIDO" in status:
                     realizado["colchaoInadimplido"] += v_pago
+                else:
+                    # Se pagou e não tem categoria, joga em novos por padrão
+                    realizado["novosAcordos"] += v_pago
+
+            # ---------------------------------------------------------
+            # 2. MAPEAMENTO DA "COMPOSIÇÃO" (Dívida/Carteira)
+            # ---------------------------------------------------------
+            
+            # Status que significam "Caso Encerrado/Perdido" não devem somar na meta a cobrar
+            if any(term in status for term in ["CANCELADO", "DEVOLVIDO", "QUEBRA"]):
+                continue 
+
+            # Soma no total da carteira (apenas ativos)
+            composicao["totalCasos"] += v_orig
+
+            if "NOVO" in status or "ABERTO" in status:
+                composicao["casosNovos"] += v_orig
+            
+            elif "PREVIS" in status: 
+                composicao["acordosVencer"] += v_orig
+            
+            elif "CORRENTE" in status:
+                composicao["colchaoCorrente"] += v_orig
+            
+            elif "INADIMPLIDO" in status:
+                composicao["colchaoInadimplido"] += v_orig
+            
+            elif "LIQUIDADO" in status:
+                # Se já foi liquidado, tecnicamente não é mais "dívida a cobrar".
+                # Mas se você quiser mostrar o volume total trabalhado, pode somar em Corrente.
+                # Se quiser apenas o que FALTA cobrar, não some nada aqui (use 'pass').
+                pass 
+            
+            else:
+                print(f"⚠️ Status ainda não mapeado: {status} (Somando em Corrente por segurança)")
+                composicao["colchaoCorrente"] += v_orig
 
         return {
             "composicao": composicao,

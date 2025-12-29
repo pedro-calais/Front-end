@@ -1,11 +1,15 @@
+
 import os
 from functools import lru_cache
 from typing import Any, Mapping
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
+import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+
+from database import get_engine_by_name
 
 load_dotenv()
 
@@ -68,10 +72,22 @@ def get_engine(database: str) -> Engine:
     )
 
 
-def executar_query(query: str, database: str = "DB", params: Mapping[str, Any] | None = None, fetch: bool = True) -> list[dict[str, Any]] | None:
-    engine = get_engine(database)
-    with engine.begin() as connection:
-        resultado = connection.execute(text(query), params or {})
-        if fetch:
-            return [dict(row._mapping) for row in resultado]
-    return None
+def executar_query(query, db_name="Painel", params=None):
+    try:
+        # 1. Pega a engine correta baseada no nome (ex: "Candiotto_STD")
+        engine_selecionada = get_engine_by_name(db_name)
+        
+        # 2. Executa a query usando essa engine
+        with engine_selecionada.connect() as connection:
+            # Se for SELECT, usamos pandas (mais fácil para relatórios)
+            if query.strip().upper().startswith("SELECT") or query.strip().upper().startswith("WITH"):
+                return pd.read_sql(query, connection, params=params)
+            else:
+                # Se for INSERT/UPDATE/DELETE
+                result = connection.execute(query, params)
+                connection.commit()
+                return result
+
+    except Exception as e:
+        print(f"Erro ao executar query no banco {db_name}: {e}")
+        return None

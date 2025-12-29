@@ -8,25 +8,43 @@ import {
 
 // --- TIPAGEM ---
 interface DashboardData {
-  composicao: {
-    casosNovos: number;
-    acordosVencer: number; 
-    colchaoCorrente: number;
-    colchaoInadimplido: number;
-    totalCasos: number;
+  composicao_carteira: {
+    novos_acordos: number;
+    a_vencer: number;
+    colchao_corrente: number;
+    colchao_inadimplido: number;
+    total_geral: number;
   };
-  realizado: {
-    novosAcordos: number;
-    colchaoAntecipado: number;
-    colchaoCorrente: number;
-    colchaoInadimplido: number;
-    caixaTotal: number;
+  realizado_caixa: {
+    novos_acordos_rec: number;
+    antecipado: number;
+    corrente_recebido: number;
+    inadimplido_rec: number;
+    caixa_total: number;
+  };
+  meta_global: {
+    atingido_valor: number;
+    meta_total_valor: number;
+    percentual: number;
+  };
+  simulador: {
+    valor_escolhido: number;
+    ddal_atual: number;
+  };
+  performance_projetada: {
+    necessario: number;
+    realizado: number;
+    diferenca: number;
+    media_diaria: number;
   };
 }
 
 const INITIAL_DATA: DashboardData = {
-  composicao: { casosNovos: 0, acordosVencer: 0, colchaoCorrente: 0, colchaoInadimplido: 0, totalCasos: 0 },
-  realizado: { novosAcordos: 0, colchaoAntecipado: 0, colchaoCorrente: 0, colchaoInadimplido: 0, caixaTotal: 0 }
+  composicao_carteira: { novos_acordos: 0, a_vencer: 0, colchao_corrente: 0, colchao_inadimplido: 0, total_geral: 0 },
+  realizado_caixa: { novos_acordos_rec: 0, antecipado: 0, corrente_recebido: 0, inadimplido_rec: 0, caixa_total: 0 },
+  meta_global: { atingido_valor: 0, meta_total_valor: 0, percentual: 0 },
+  simulador: { valor_escolhido: 0, ddal_atual: 0 },
+  performance_projetada: { necessario: 0, realizado: 0, diferenca: 0, media_diaria: 0 }
 };
 
 // --- UTILITÁRIOS ---
@@ -143,7 +161,7 @@ const ComposicaoCarteira = () => {
       console.log("📤 Enviando filtros:", payload);
 
       // 2. Faz uma ÚNICA chamada POST para o Python
-      // O Python agora é inteligente e devolve { composicao: ..., realizado: ... }
+      // O Python devolve a estrutura completa da carteira e do caixa.
       const response = await api.post('/api/composicao-carteira', payload);
       
       if (response.data) {
@@ -157,15 +175,15 @@ const ComposicaoCarteira = () => {
     }
   };
 
-  const safeComposicao = data.composicao || INITIAL_DATA.composicao;
-  const safeRealizado = data.realizado || INITIAL_DATA.realizado;
-  const totalRecebido = safeRealizado.caixaTotal || 1; 
+  const safeComposicao = data.composicao_carteira || INITIAL_DATA.composicao_carteira;
+  const safeRealizado = data.realizado_caixa || INITIAL_DATA.realizado_caixa;
+  const totalRecebido = safeRealizado.caixa_total || 1; 
 
   // Cálculos de Porcentagem para o Gráfico
-  const pctNovos = (safeRealizado.novosAcordos / totalRecebido) * 100;
-  const pctVencer = (safeRealizado.colchaoAntecipado / totalRecebido) * 100;
-  const pctCorrente = (safeRealizado.colchaoCorrente / totalRecebido) * 100;
-  const pctInadimplido = (safeRealizado.colchaoInadimplido / totalRecebido) * 100;
+  const pctNovos = (safeRealizado.novos_acordos_rec / totalRecebido) * 100;
+  const pctVencer = (safeRealizado.antecipado / totalRecebido) * 100;
+  const pctCorrente = (safeRealizado.corrente_recebido / totalRecebido) * 100;
+  const pctInadimplido = (safeRealizado.inadimplido_rec / totalRecebido) * 100;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans text-slate-900">
@@ -213,11 +231,11 @@ const ComposicaoCarteira = () => {
                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide">Previsão (Carteira)</h2>
                 </div>
                 <div className="space-y-4">
-                    <StyledCard label="Novos Casos (Previsto)" value={formatCurrency(safeComposicao.casosNovos)} colorClass="border-blue-500" icon={Briefcase} />
-                    <StyledCard label="Acordos a Vencer (Previsão)" value={formatCurrency(safeComposicao.acordosVencer)} colorClass="border-amber-400" icon={Clock} />
-                    <StyledCard label="Colchão Corrente (Previsto)" value={formatCurrency(safeComposicao.colchaoCorrente)} colorClass="border-emerald-500" icon={CheckCircle2} />
-                    <StyledCard label="Colchão Inadimplido (Previsto)" value={formatCurrency(safeComposicao.colchaoInadimplido)} colorClass="border-red-500" icon={XCircle} />
-                    <StyledCard label="Total da Carteira" value={formatCurrency(safeComposicao.totalCasos)} colorClass="border-purple-500" icon={Wallet} />
+                    <StyledCard label="Novos Casos (Previsto)" value={formatCurrency(safeComposicao.novos_acordos)} colorClass="border-blue-500" icon={Briefcase} />
+                    <StyledCard label="Acordos a Vencer (Previsão)" value={formatCurrency(safeComposicao.a_vencer)} colorClass="border-amber-400" icon={Clock} />
+                    <StyledCard label="Colchão Corrente (Previsto)" value={formatCurrency(safeComposicao.colchao_corrente)} colorClass="border-emerald-500" icon={CheckCircle2} />
+                    <StyledCard label="Colchão Inadimplido (Previsto)" value={formatCurrency(safeComposicao.colchao_inadimplido)} colorClass="border-red-500" icon={XCircle} />
+                    <StyledCard label="Total da Carteira" value={formatCurrency(safeComposicao.total_geral)} colorClass="border-purple-500" icon={Wallet} />
                 </div>
             </div>
 
@@ -228,11 +246,11 @@ const ComposicaoCarteira = () => {
                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide">Realizado (Caixa)</h2>
                 </div>
                 <div className="space-y-4">
-                    <StyledCard label="Novos Acordos Pagos" value={formatCurrency(safeRealizado.novosAcordos)} colorClass="border-blue-500" icon={Briefcase} />
-                    <StyledCard label="Antecipados Recebidos" value={formatCurrency(safeRealizado.colchaoAntecipado)} colorClass="border-amber-400" icon={ArrowRight} />
-                    <StyledCard label="Corrente Recebido" value={formatCurrency(safeRealizado.colchaoCorrente)} colorClass="border-emerald-500" icon={CheckCircle2} />
-                    <StyledCard label="Inadimplido Recuperado" value={formatCurrency(safeRealizado.colchaoInadimplido)} colorClass="border-red-500" icon={XCircle} />
-                    <StyledCard label="Caixa Total" value={formatCurrency(safeRealizado.caixaTotal)} colorClass="border-purple-500" icon={Wallet} />
+                    <StyledCard label="Novos Acordos Pagos" value={formatCurrency(safeRealizado.novos_acordos_rec)} colorClass="border-blue-500" icon={Briefcase} />
+                    <StyledCard label="Antecipados Recebidos" value={formatCurrency(safeRealizado.antecipado)} colorClass="border-amber-400" icon={ArrowRight} />
+                    <StyledCard label="Corrente Recebido" value={formatCurrency(safeRealizado.corrente_recebido)} colorClass="border-emerald-500" icon={CheckCircle2} />
+                    <StyledCard label="Inadimplido Recuperado" value={formatCurrency(safeRealizado.inadimplido_rec)} colorClass="border-red-500" icon={XCircle} />
+                    <StyledCard label="Caixa Total" value={formatCurrency(safeRealizado.caixa_total)} colorClass="border-purple-500" icon={Wallet} />
                 </div>
             </div>
         </div>
@@ -245,17 +263,17 @@ const ComposicaoCarteira = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                 <div className="space-y-2">
-                    <ProgressBar label="Novos Acordos" value={pctNovos} valueText={formatCurrency(safeRealizado.novosAcordos)} color="bg-blue-500" />
-                    <ProgressBar label="Acordos a Vencer" value={pctVencer} valueText={formatCurrency(safeRealizado.colchaoAntecipado)} color="bg-amber-400" />
-                    <ProgressBar label="Colchão Corrente" value={pctCorrente} valueText={formatCurrency(safeRealizado.colchaoCorrente)} color="bg-emerald-500" />
-                    <ProgressBar label="Colchão Inadimplido" value={pctInadimplido} valueText={formatCurrency(safeRealizado.colchaoInadimplido)} color="bg-red-500" />
+                    <ProgressBar label="Novos Acordos" value={pctNovos} valueText={formatCurrency(safeRealizado.novos_acordos_rec)} color="bg-blue-500" />
+                    <ProgressBar label="Acordos a Vencer" value={pctVencer} valueText={formatCurrency(safeRealizado.antecipado)} color="bg-amber-400" />
+                    <ProgressBar label="Colchão Corrente" value={pctCorrente} valueText={formatCurrency(safeRealizado.corrente_recebido)} color="bg-emerald-500" />
+                    <ProgressBar label="Colchão Inadimplido" value={pctInadimplido} valueText={formatCurrency(safeRealizado.inadimplido_rec)} color="bg-red-500" />
                 </div>
                 <div className="flex flex-col items-center justify-center">
                     <div className="relative w-64 h-64 rounded-full" style={{ background: `conic-gradient(#3b82f6 0% ${pctNovos}%, #fbbf24 ${pctNovos}% ${pctNovos + pctVencer}%, #10b981 ${pctNovos + pctVencer}% ${pctNovos + pctVencer + pctCorrente}%, #ef4444 ${pctNovos + pctVencer + pctCorrente}% 100%)` }}>
                         <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Realizado</span>
                             <span className="text-3xl font-black text-slate-900 tracking-tight">
-                                {new Intl.NumberFormat('pt-BR', { notation: "compact", compactDisplay: "short", style: "currency", currency: "BRL" }).format(safeRealizado.caixaTotal)}
+                                {new Intl.NumberFormat('pt-BR', { notation: "compact", compactDisplay: "short", style: "currency", currency: "BRL" }).format(safeRealizado.caixa_total)}
                             </span>
                         </div>
                     </div>

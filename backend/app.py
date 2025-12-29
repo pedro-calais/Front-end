@@ -677,27 +677,80 @@ def get_dashboard_carteira_api():
         print(f"❌ Erro Dashboard Carteira: {e}")
         return jsonify({"error": str(e)}), 500
     
+    
 @app.route('/api/composicao-carteira', methods=['POST'])
 def composicao_carteira():
     try:
-        # Pega os filtros enviados pelo React (JSON)
-        filtros = request.json 
-        
-        print(f"📡 Recebendo pedido de Composição: {filtros}")
+        filtros = request.json or {}
 
-        # Chama sua função poderosa
+        print(f"[COMPOSICAO] Recebendo pedido: {filtros}")
+
         resultado = get_dados_composicao_especifico(filtros, engine)
-
-        if resultado:
-            return jsonify(resultado), 200
-        else:
-            # Se der erro interno na função e retornar None
+        if not resultado:
             return jsonify({"error": "Erro ao processar dados"}), 500
 
+        composicao = resultado.get("composicao", {})
+        realizado = resultado.get("realizado", {})
+
+        caixa_total = float(realizado.get("caixaTotal", 0.0) or 0.0)
+        meta_mensal = 3000000.0
+        percentual = (caixa_total / meta_mensal * 100) if meta_mensal > 0 else 0.0
+
+        data_ref_str = filtros.get("data_referencia") or datetime.now().strftime("%Y-%m")
+        try:
+            ano_ref, mes_ref = map(int, data_ref_str.split("-"))
+        except Exception:
+            hoje = datetime.now()
+            ano_ref, mes_ref = hoje.year, hoje.month
+
+        import calendar
+        dias_no_mes = calendar.monthrange(ano_ref, mes_ref)[1]
+        hoje = datetime.now()
+        dia_hoje = hoje.day if (hoje.year == ano_ref and hoje.month == mes_ref) else 1
+        dias_restantes = max(1, dias_no_mes - dia_hoje)
+
+        necessario = max(0.0, meta_mensal - caixa_total)
+        media_diaria = necessario / dias_restantes if necessario > 0 else 0.0
+
+        response_data = {
+            "composicao_carteira": {
+                "novos_acordos": float(composicao.get("casosNovos", 0.0) or 0.0),
+                "a_vencer": float(composicao.get("acordosVencer", 0.0) or 0.0),
+                "colchao_corrente": float(composicao.get("colchaoCorrente", 0.0) or 0.0),
+                "colchao_inadimplido": float(composicao.get("colchaoInadimplido", 0.0) or 0.0),
+                "total_geral": float(composicao.get("totalCasos", 0.0) or 0.0)
+            },
+            "realizado_caixa": {
+                "novos_acordos_rec": float(realizado.get("novosAcordos", 0.0) or 0.0),
+                "antecipado": float(realizado.get("colchaoAntecipado", 0.0) or 0.0),
+                "corrente_recebido": float(realizado.get("colchaoCorrente", 0.0) or 0.0),
+                "inadimplido_rec": float(realizado.get("colchaoInadimplido", 0.0) or 0.0),
+                "caixa_total": caixa_total
+            },
+            "meta_global": {
+                "atingido_valor": caixa_total,
+                "meta_total_valor": meta_mensal,
+                "percentual": round(percentual, 1)
+            },
+            "simulador": {
+                "valor_escolhido": 0.0,
+                "ddal_atual": 0.0
+            },
+            "performance_projetada": {
+                "necessario": necessario,
+                "realizado": caixa_total,
+                "diferenca": necessario,
+                "media_diaria": media_diaria
+            }
+        }
+
+        return jsonify(response_data), 200
+
     except Exception as e:
-        print(f"❌ Erro na rota: {e}")
+        print(f"[COMPOSICAO] Erro na rota: {e}")
         return jsonify({"error": str(e)}), 500
-    
+
+
 @app.route('/api/composicao-carteira-prevista', methods=['GET'])
 def get_composicao_carteira_prevista():
     try:
@@ -1026,103 +1079,6 @@ def rota_concluir_tarefa(task_id):
     except Exception as e:
         print(f"❌ Erro interno: {e}")
         return jsonify({"error": str(e)}), 500
-
-@app.route("/api/composicao-carteira", methods=["POST"])
-def dashboard_composicao():
-    session = SessionLocal()
-    try:
-        data = request.json
-        # Aqui você pode usar os filtros 'data.negociador', 'data.campanha' se quiser refinar o SQL
-        
-        # Datas para cálculos
-        hoje = datetime.now()
-        inicio_mes = hoje.replace(day=1)
-        proximos_30_dias = hoje + timedelta(days=30)
-
-        # ==========================================================
-        # 1. NOVOS ACORDOS (Baseado na DATA_CADASTRO deste mês)
-        # ==========================================================
-        # SQL Server usa MONTH() e YEAR(). Ajuste se for outro banco.
-        sql_novos = text("""
-            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus(inativo) 
-            WHERE MONTH(DATA_CADASTRO) = :mes AND YEAR(DATA_CADASTRO) = :ano
-        """)
-        novos_acordos_valor = session.execute(sql_novos, {"mes": hoje.month, "ano": hoje.year}).scalar() or 0.0
-
-        # ==========================================================
-        # 2. ACORDOS A VENCER (Vencimento nos próximos 30 dias)
-        # ==========================================================
-        sql_vencer = text("""
-            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus(inativo) 
-            WHERE VENCIMENTO >= :hoje AND VENCIMENTO <= :futuro AND STATUS_TITULO = 'Aberto'
-        """)
-        acordos_vencer_valor = session.execute(sql_vencer, {"hoje": hoje.date(), "futuro": proximos_30_dias.date()}).scalar() or 0.0
-
-        # ==========================================================
-        # 3. COLCHÕES (Agrupamento por Status)
-        # ==========================================================
-        sql_status = text("SELECT Status, SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus(inativo) GROUP BY Status")
-        resultados = session.execute(sql_status).fetchall()
-
-        colchao_corrente = 0.0
-        colchao_inadimplido = 0.0
-        
-        colchao_corrente_recebido = 0.0
-        colchao_inadimplido_recebido = 0.0
-
-        for row in resultados:
-            status_txt = str(row[0] or "").lower()
-            valor_total = float(row[1] or 0.0)
-            valor_pago = float(row[2] or 0.0)
-
-            # Lógica inteligente baseada nos nomes que vimos no Raio-X
-            if "futuro" in status_txt or "em dia" in status_txt or "corrente" in status_txt:
-                colchao_corrente += valor_total
-                colchao_corrente_recebido += valor_pago
-            elif "inadimplente" in status_txt or "atrasado" in status_txt or "vencido" in status_txt:
-                colchao_inadimplido += valor_total
-                colchao_inadimplido_recebido += valor_pago
-            else:
-                # Se sobrar algo (ex: "Inadimplente A Vencer"), decidimos onde colocar.
-                # Como vimos "Inadimplente A Vencer", vamos somar no inadimplido por segurança
-                colchao_inadimplido += valor_total
-
-        # ==========================================================
-        # 4. TOTAIS GERAIS
-        # ==========================================================
-        sql_total = text("SELECT SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus(inativo)")
-        totais = session.execute(sql_total).fetchone()
-        
-        total_carteira = float(totais[0] or 0.0)
-        caixa_total = float(totais[1] or 0.0)
-
-        # Monta a resposta ESTRUTURADA EXATAMENTE como o Frontend pede
-        response_data = {
-            "composicao": {
-                "casosNovos": novos_acordos_valor,         # Preenche o card "Novos Acordos"
-                "acordosVencer": acordos_vencer_valor,     # Preenche o card "A Vencer"
-                "colchaoCorrente": colchao_corrente,
-                "colchaoInadimplido": colchao_inadimplido, # Preenche o card vermelho
-                "totalCasos": total_carteira
-            },
-            "realizado": {
-                "novosAcordos": novos_acordos_valor, # Assumindo que novos acordos contam como realizado ou criar lógica separada para pago
-                "colchaoAntecipado": 0.0,            # Pode implementar depois se tiver coluna de antecipação
-                "colchaoCorrente": colchao_corrente_recebido,
-                "colchaoInadimplido": colchao_inadimplido_recebido,
-                "caixaTotal": caixa_total
-            }
-        }
-
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        print(f"Erro detalhado API: {e}")
-        return jsonify({"error": str(e)}), 500
-    finally:
-        session.close()
-
-
 
 @app.route('/negociador/dashboard-metas', methods=['POST'])
 def dashboard_metas():

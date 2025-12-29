@@ -136,6 +136,7 @@ const PainelObjetivo = () => {
         const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo/opcoes");
         if (response.ok) {
           const result = await response.json();
+          
           // Normaliza para camelCase caso venha snake_case
           const camelResult = toCamelDeep(result);
           setOpcoesNegociadores(camelResult.negociadores || []);

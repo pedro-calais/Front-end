@@ -712,12 +712,50 @@ def get_painel_objetivo():
     finally:
         session.close()
 
-@app.route("/painel-objetivo/opcoes", methods=["GET"])
+@app.route('/painel-objetivo/opcoes', methods=['GET'])
 def get_opcoes_painel():
     try:
-        negociadores = get_negociadores_ativos()
-        return jsonify({"negociadores": negociadores, "estrutura_credores": CREDOR_VS_CAMPANHA})
+        print("Buscando opções de filtros...")
+
+        # 1. Buscar Negociadores (Usuários com nível 'Negociador')
+        # Ajuste o filtro conforme sua lógica de nível de acesso
+        negociadores_db = session.query(User).filter(User.ativo == True).all()
+        lista_negociadores = [
+            {"label": u.name, "value": u.name} 
+            for u in negociadores_db
+        ]
+
+        # 2. Buscar Estrutura Credor -> Campanhas
+        # Vamos buscar da tabela UserCampanha (ou da tabela de fatos, se preferir)
+        # O distinct garante que não venha duplicado
+        campanhas_db = session.query(UserCampanha.credor, UserCampanha.campanha).distinct().all()
+
+        mapa_credores = {}
+
+        for credor, campanha in campanhas_db:
+            if not credor: continue # Pula vazios
+            
+            # Se o credor ainda não está no mapa, cria a lista
+            if credor not in mapa_credores:
+                mapa_credores[credor] = []
+            
+            # Adiciona a campanha se ela existir e não estiver na lista ainda
+            if campanha and campanha not in mapa_credores[credor]:
+                mapa_credores[credor].append(campanha)
+
+        # 3. Ordenar as listas para ficar bonito no front
+        for credor in mapa_credores:
+            mapa_credores[credor].sort()
+
+        response_data = {
+            "negociadores": lista_negociadores,
+            "credores_campanhas": mapa_credores # <--- ESSA É A CHAVE QUE O REACT PROCURA
+        }
+
+        return jsonify(response_data), 200
+
     except Exception as e:
+        print(f"Erro ao buscar opções: {e}")
         return jsonify({"error": str(e)}), 500
     
 

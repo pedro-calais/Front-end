@@ -13,6 +13,10 @@ const API_URL = 'https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev'
  */
 export const api = axios.create({
   baseURL: API_URL,
+  headers: {
+    "ngrok-skip-browser-warning": "true", // <--- O CRACHÁ VIP (Pula o aviso do Ngrok)
+    "Content-Type": "application/json"
+  }
 });
 
 /**

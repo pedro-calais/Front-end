@@ -961,7 +961,7 @@ def dashboard_composicao():
         # ==========================================================
         # SQL Server usa MONTH() e YEAR(). Ajuste se for outro banco.
         sql_novos = text("""
-            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus 
+            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus(inativo) 
             WHERE MONTH(DATA_CADASTRO) = :mes AND YEAR(DATA_CADASTRO) = :ano
         """)
         novos_acordos_valor = session.execute(sql_novos, {"mes": hoje.month, "ano": hoje.year}).scalar() or 0.0
@@ -970,7 +970,7 @@ def dashboard_composicao():
         # 2. ACORDOS A VENCER (Vencimento nos próximos 30 dias)
         # ==========================================================
         sql_vencer = text("""
-            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus 
+            SELECT SUM(VALOR) FROM tbacompanhamentoporstatus(inativo) 
             WHERE VENCIMENTO >= :hoje AND VENCIMENTO <= :futuro AND STATUS_TITULO = 'Aberto'
         """)
         acordos_vencer_valor = session.execute(sql_vencer, {"hoje": hoje.date(), "futuro": proximos_30_dias.date()}).scalar() or 0.0
@@ -978,7 +978,7 @@ def dashboard_composicao():
         # ==========================================================
         # 3. COLCHÕES (Agrupamento por Status)
         # ==========================================================
-        sql_status = text("SELECT Status, SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus GROUP BY Status")
+        sql_status = text("SELECT Status, SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus(inativo) GROUP BY Status")
         resultados = session.execute(sql_status).fetchall()
 
         colchao_corrente = 0.0
@@ -1007,7 +1007,7 @@ def dashboard_composicao():
         # ==========================================================
         # 4. TOTAIS GERAIS
         # ==========================================================
-        sql_total = text("SELECT SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus")
+        sql_total = text("SELECT SUM(VALOR), SUM(VALOR_PAGO) FROM tbacompanhamentoporstatus(inativo)")
         totais = session.execute(sql_total).fetchone()
         
         total_carteira = float(totais[0] or 0.0)

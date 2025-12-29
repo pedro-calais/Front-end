@@ -140,7 +140,7 @@ class HistoricoRO(Base):
     descricao = Column(Text)
 
 class TBAcompanhamento(Base):
-    __tablename__ = 'tbacompanhamentoporstatus'
+    __tablename__ = 'tbacompanhamentoporstatus(inativo)'
     
     # Mapeamento exato com suas colunas SQL
     # 'name=' diz ao Python qual o nome real na tabela se quisermos usar outro nome no código,

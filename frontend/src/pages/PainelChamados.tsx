@@ -224,17 +224,35 @@ const PainelChamados = () => {
     setLoading(true);
     try {
       const response = await api.get('/chamados/listar');
-      const data = response.data;
-      setChamados(data);
+      console.log("📦 Chamados recebidos:", response.data); // Debug no console
 
-      const negociadores = Array.from(new Set(data.map((c: Chamado) => c.solicitante))).filter(Boolean) as string[];
-      const statuses = Array.from(new Set(data.map((c: Chamado) => c.status))).filter(Boolean) as string[];
+      // BLINDAGEM: Garante que 'data' seja sempre uma lista, mesmo se vier diferente
+      let dadosSeguros: Chamado[] = [];
+      const rawData = response.data;
+
+      if (Array.isArray(rawData)) {
+        dadosSeguros = rawData;
+      } else if (rawData && Array.isArray(rawData.chamados)) {
+        dadosSeguros = rawData.chamados;
+      } else if (rawData && Array.isArray(rawData.data)) {
+        dadosSeguros = rawData.data;
+      } else {
+        console.warn("⚠️ Formato estranho recebido, usando lista vazia.");
+        dadosSeguros = [];
+      }
+
+      setChamados(dadosSeguros);
+
+      // Agora usamos 'dadosSeguros' em vez de 'data' para evitar o erro .map is not a function
+      const negociadores = Array.from(new Set(dadosSeguros.map((c: Chamado) => c.solicitante))).filter(Boolean) as string[];
+      const statuses = Array.from(new Set(dadosSeguros.map((c: Chamado) => c.status))).filter(Boolean) as string[];
       
       setListaNegociadores(negociadores.sort());
       setListaStatus(statuses.sort());
 
     } catch (error) {
       console.error("Erro ao buscar chamados:", error);
+      setChamados([]); // Zera a lista para não travar a tela
     } finally {
       setLoading(false);
     }

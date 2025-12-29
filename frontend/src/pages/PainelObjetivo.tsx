@@ -215,7 +215,7 @@ const PainelObjetivo = () => {
         <div className="flex items-center gap-12">
             <div className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-1 cursor-pointer">MCSA</div>
             <nav className="hidden md:flex items-center gap-8">
-                <a href="/dashboard" className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors">Visão Geral</a>
+                <a href="/" className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors">Visão Geral</a>
                 <a href="#" className="text-sm font-bold text-slate-900 border-b-2 border-slate-900 pb-1">Painel Objetivo</a>
             </nav>
         </div>

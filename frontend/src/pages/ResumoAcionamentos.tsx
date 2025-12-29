@@ -141,7 +141,6 @@ const ResumoAcionamentos = () => {
             </Link>
             <nav className="hidden md:flex items-center gap-8">
                 <Link to="/" className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors pb-1">Visão Geral</Link>
-                <Link to="/composicao-carteira" className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors pb-1">Carteira</Link>
                 <span className="text-sm font-bold text-slate-900 border-b-2 border-slate-900 pb-1">Acionamentos</span>
             </nav>
         </div>

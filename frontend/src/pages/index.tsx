@@ -2,6 +2,7 @@ import  { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import TeamModal from "../pages/TeamModal"; 
 import NegociadorDashboard from "./NegociadorDashboard"; 
+import { api } from "../api/api";
 import {
   Target, TrendingUp, AlertTriangle, FileText, BarChart3, Settings,
   CreditCard, PieChart, Search, CalendarCheck, LogOut, PhoneCall,
@@ -89,18 +90,34 @@ function AdminDashboard({ user, onLogout }: any) {
   const [stats, setStats] = useState({ total: 0, ativos: 0 });
 
   useEffect(() => {
-    fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users")
-      .then((res) => { 
-          if (res.ok) return res.json(); 
-          throw new Error("Erro API");
-      })
-      .then((data) => {
-        const total = Array.isArray(data) ? data.length : 0;
-        const ativos = Array.isArray(data) ? data.filter((u: any) => u.ativo === true || String(u.ativo) === "true").length : 0;
+    const carregarStats = async () => {
+      try {
+        // ✅ CORREÇÃO: Usando api.get em vez de fetch puro
+        // Isso garante que o header 'ngrok-skip-browser-warning' seja enviado
+        const response = await api.get("/users");
+        
+        const data = response.data;
+        
+        // Blindagem simples caso o backend mande algo diferente de array
+        const listaUsuarios = Array.isArray(data) ? data : [];
+
+        const total = listaUsuarios.length;
+        
+        // Contagem de ativos (garantindo conversão de string/boolean)
+        const ativos = listaUsuarios.filter((u: any) => 
+            u.ativo === true || String(u.ativo) === "true"
+        ).length;
+
         setStats({ total, ativos });
-      })
-      .catch(() => console.log("API Users offline"));
-  }, [isTeamModalOpen]);
+
+      } catch (error) {
+        console.error("Erro ao carregar estatísticas:", error);
+        // Não zeramos o stats aqui para manter o cache visual se falhar momentaneamente
+      }
+    };
+
+    carregarStats();
+  }, [isTeamModalOpen]); // Recarrega sempre que fechar o modal de equipe
 
   const HIGHLIGHTS = [
     { label: "Painel de Objetivo", icon: Target, path: "/painel-objetivo" },

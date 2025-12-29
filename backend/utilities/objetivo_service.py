@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Importação segura das variáveis globais
 try:
-    from utilities.variaveis_globais import credor_vs_campanha
+    from config.constants import credor_vs_campanha
 except ImportError:
     print("⚠️ ERRO CRÍTICO: Não foi possível importar 'credor_vs_campanha' em objetivo_service.py")
     credor_vs_campanha = {}

@@ -3,11 +3,7 @@ from sqlalchemy import text
 from datetime import datetime
 import calendar
 
-# Importa as variáveis para validação (opcional, mas bom para consistência)
-try:
-    from utilities.variaveis_globais import credor_vs_campanha
-except ImportError:
-    pass
+
 
 def calcular_aging(dias):
     """Replica a lógica de aging do Streamlit"""
@@ -214,7 +210,7 @@ def get_dados_composicao_especifico(filtros, engine):
         tempo = (datetime.now() - t_start).total_seconds()
         print(f"   ✅ Query retornou {len(result)} linhas em {tempo:.2f}s")
 
-        # 4. CLASSIFICAÇÃO DOS DADOS (CORRIGIDA)
+        # 4. CLASSIFICAÇÃO DOS DADOS
         composicao = {
             "casosNovos": 0.0, "acordosVencer": 0.0, 
             "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "totalCasos": 0.0
@@ -224,73 +220,33 @@ def get_dados_composicao_especifico(filtros, engine):
             "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "caixaTotal": 0.0
         }
 
-        print("🔍 [DEBUG] Processando linhas do SQL:")
-
         for row in result:
-            # Normaliza o status para maiúsculo
-            status = str(row.status).upper().strip() if row.status else "SEM STATUS"
-            
-            # Garante que os valores sejam números
+            status = str(row.status).upper() if row.status else "SEM STATUS"
             v_orig = float(row.total_original or 0)
             v_pago = float(row.total_pago or 0)
 
-            # Debug para ver o que está acontecendo
-            print(f"   -> Status: {status} | Orig: {v_orig} | Pago: {v_pago}")
+            # --- Somas de Composição ---
+            composicao["totalCasos"] += v_orig
 
-            # ---------------------------------------------------------
-            # 1. MAPEAMENTO DO "REALIZADO" (Dinheiro no Caixa)
-            # ---------------------------------------------------------
+            if "INADIMPLIDO" in status:
+                composicao["colchaoInadimplido"] += v_orig
+            elif "ACORDO" in status or "ABERTO" in status:
+                composicao["casosNovos"] += v_orig
+            else:
+                composicao["colchaoCorrente"] += v_orig
+
+            # --- Somas de Realizado ---
             realizado["caixaTotal"] += v_pago
 
             if v_pago > 0:
-                if "LIQUIDADO" in status:
-                    # Se foi liquidado (pago), consideramos sucesso
-                    # Você pode decidir se joga em 'novosAcordos' ou distribui
-                    realizado["novosAcordos"] += v_pago 
-                elif "ACORDO" in status:
-                    realizado["novosAcordos"] += v_pago
+                if "INADIMPLIDO" in status:
+                    realizado["colchaoInadimplido"] += v_pago
                 elif "ANTECIPADO" in status:
                     realizado["colchaoAntecipado"] += v_pago
-                elif "CORRENTE" in status:
-                    realizado["colchaoCorrente"] += v_pago
-                elif "INADIMPLIDO" in status:
-                    realizado["colchaoInadimplido"] += v_pago
-                else:
-                    # Se pagou e não tem categoria, joga em novos por padrão
+                elif "ACORDO" in status:
                     realizado["novosAcordos"] += v_pago
-
-            # ---------------------------------------------------------
-            # 2. MAPEAMENTO DA "COMPOSIÇÃO" (Dívida/Carteira)
-            # ---------------------------------------------------------
-            
-            # Status que significam "Caso Encerrado/Perdido" não devem somar na meta a cobrar
-            if any(term in status for term in ["CANCELADO", "DEVOLVIDO", "QUEBRA"]):
-                continue 
-
-            # Soma no total da carteira (apenas ativos)
-            composicao["totalCasos"] += v_orig
-
-            if "NOVO" in status or "ABERTO" in status:
-                composicao["casosNovos"] += v_orig
-            
-            elif "PREVIS" in status: 
-                composicao["acordosVencer"] += v_orig
-            
-            elif "CORRENTE" in status:
-                composicao["colchaoCorrente"] += v_orig
-            
-            elif "INADIMPLIDO" in status:
-                composicao["colchaoInadimplido"] += v_orig
-            
-            elif "LIQUIDADO" in status:
-                # Se já foi liquidado, tecnicamente não é mais "dívida a cobrar".
-                # Mas se você quiser mostrar o volume total trabalhado, pode somar em Corrente.
-                # Se quiser apenas o que FALTA cobrar, não some nada aqui (use 'pass').
-                pass 
-            
-            else:
-                print(f"⚠️ Status ainda não mapeado: {status} (Somando em Corrente por segurança)")
-                composicao["colchaoCorrente"] += v_orig
+                else:
+                    realizado["colchaoCorrente"] += v_pago
 
         return {
             "composicao": composicao,

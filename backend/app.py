@@ -12,7 +12,7 @@ from flask_cors import CORS
 from sqlalchemy import text, or_
 from database import SessionLocal
 from routes.rotas_telemetria import telemetry_bp, get_manager_dashboard
-from models import Clientes, User, TBAcompanhamento, UserCampanha
+from models import Clientes, User, TBAcompanhamento, UserCampanha, executar_query
 from sqlalchemy import Column, Integer, String, Float, func, case, extract# Importações de Serviços (Fallback seguro)
 try:
     from utilities.negociador_service import get_resumo_celulas,calcular_projecao
@@ -20,6 +20,8 @@ try:
     from utilities.carteira_service import obter_dados_carteira, get_dados_composicao_especifico
     from utilities.objetivo_service import obter_resumo_objetivos
     from utilities.clickup_service import  processar_abertura_chamado, listar_tarefas_roadmap
+    from utilities.utilitarios import ler_consulta_sql, filtro_data, ultimo_dia_do_mes, primeiro_dia_do_mes
+
 
 except ImportError as e:
     print(f"⚠️ Aviso de Importação: {e} - Algumas rotas podem falhar.")
@@ -693,6 +695,44 @@ def composicao_carteira():
 
     except Exception as e:
         print(f"❌ Erro na rota: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/composicao-carteira-prevista', methods=['GET'])
+def get_composicao_carteira_prevista():
+    try:
+        # 1. Captura os filtros da URL (Ex: ?data_referencia=2025-12&negociador=...)
+        data_ref = request.args.get('data_referencia')
+        negociador = request.args.get('negociador')
+        campanha = request.args.get('campanha')
+
+        # 2. Ler a query SQL
+        query = ler_consulta_sql('queries/composicao_de_casos_previsto.sql')
+        
+        # 3. Executar passando os parâmetros para o SQL (Certifique-se que sua função executar_query aceita params)
+        # Se 'executar_query' não aceita params direto, você precisará formatar a string query antes.
+        params = {
+            "referencia": data_ref, # A query usa '{referencia}'
+            "negociador": negociador,
+            "campanha": campanha
+        }
+        
+        # Nota: Se sua função ler_consulta_sql retorna string pura, use .format() ou params do SQLAlchemy
+        resultado = executar_query(query, "Candiotto_STD", params=params)
+
+        if resultado is None:
+            return jsonify([]), 200
+
+        # Converte para lista de dicionários
+        if hasattr(resultado, 'to_dict'):
+            dados = resultado.to_dict('records')
+        else:
+            # Caso seja lista de objetos Row do SQLAlchemy
+            dados = [dict(row._mapping) for row in resultado]
+
+        return jsonify(dados), 200
+
+    except Exception as e:
+        print(f"❌ Erro ao buscar composição carteira prevista: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/painel-objetivo', methods=['POST'])

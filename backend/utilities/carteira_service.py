@@ -214,7 +214,7 @@ def get_dados_composicao_especifico(filtros, engine):
         tempo = (datetime.now() - t_start).total_seconds()
         print(f"   ✅ Query retornou {len(result)} linhas em {tempo:.2f}s")
 
-        # 4. CLASSIFICAÇÃO DOS DADOS
+        # 4. CLASSIFICAÇÃO DOS DADOS (CORRIGIDA)
         composicao = {
             "casosNovos": 0.0, "acordosVencer": 0.0, 
             "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "totalCasos": 0.0
@@ -224,33 +224,47 @@ def get_dados_composicao_especifico(filtros, engine):
             "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "caixaTotal": 0.0
         }
 
+        print("🔍 [DEBUG] Processando linhas do SQL:")
+
         for row in result:
-            status = str(row.status).upper() if row.status else "SEM STATUS"
+            # Normaliza o status para maiúsculo para facilitar a comparação
+            status = str(row.status).upper().strip() if row.status else "SEM STATUS"
+            
+            # Pega valores garantindo float
             v_orig = float(row.total_original or 0)
             v_pago = float(row.total_pago or 0)
 
-            # --- Somas de Composição ---
+            print(f"   -> Status: {status} | Orig: {v_orig} | Pago: {v_pago}")
+
+            # --- SOMAS DE COMPOSIÇÃO (Valores em Aberto) ---
             composicao["totalCasos"] += v_orig
 
-            if "INADIMPLIDO" in status:
-                composicao["colchaoInadimplido"] += v_orig
-            elif "ACORDO" in status or "ABERTO" in status:
+            if "NOVO" in status:
                 composicao["casosNovos"] += v_orig
+            elif "PREVIS" in status or "PREVISAO" in status: # Pega 'Previsão' e 'Previsao'
+                composicao["acordosVencer"] += v_orig
+            elif "CORRENTE" in status:
+                composicao["colchaoCorrente"] += v_orig
+            elif "INADIMPLIDO" in status:
+                composicao["colchaoInadimplido"] += v_orig
             else:
+                # Se sobrar algo (ex: 'VERIFICAR'), somamos no corrente por segurança ou logamos
+                print(f"⚠️ Status não mapeado na composição: {status}")
                 composicao["colchaoCorrente"] += v_orig
 
-            # --- Somas de Realizado ---
+            # --- SOMAS DE REALIZADO (Valores Pagos) ---
             realizado["caixaTotal"] += v_pago
 
             if v_pago > 0:
-                if "INADIMPLIDO" in status:
-                    realizado["colchaoInadimplido"] += v_pago
-                elif "ANTECIPADO" in status:
-                    realizado["colchaoAntecipado"] += v_pago
-                elif "ACORDO" in status:
+                # Aqui a lógica pode ser diferente dependendo de como você classifica o pagamento
+                if "NOVO" in status:
                     realizado["novosAcordos"] += v_pago
-                else:
+                elif "PREVIS" in status or "ANTECIPADO" in status:
+                    realizado["colchaoAntecipado"] += v_pago
+                elif "CORRENTE" in status:
                     realizado["colchaoCorrente"] += v_pago
+                elif "INADIMPLIDO" in status:
+                    realizado["colchaoInadimplido"] += v_pago
 
         return {
             "composicao": composicao,

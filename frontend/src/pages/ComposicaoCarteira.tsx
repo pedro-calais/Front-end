@@ -10,7 +10,7 @@ import {
 interface DashboardData {
   composicao: {
     casosNovos: number;
-    acordosVencer: number; // Mapeado de "Previsão"
+    acordosVencer: number; 
     colchaoCorrente: number;
     colchaoInadimplido: number;
     totalCasos: number;
@@ -95,12 +95,17 @@ const ProgressBar = ({ label, value, color, valueText }: any) => (
   </div>
 );
 
+// --- COMPONENTE PRINCIPAL ---
 const ComposicaoCarteira = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DashboardData>(INITIAL_DATA);
+  
+  // Filtros
   const [periodo, setPeriodo] = useState(new Date().toISOString().slice(0, 7));
   const [selectedNegociador, setSelectedNegociador] = useState("");
   const [selectedCampanha, setSelectedCampanha] = useState("");
+  
+  // Listas
   const [listaNegociadores, setListaNegociadores] = useState<{value: string, label: string}[]>([]);
   const [listaCampanhas, setListaCampanhas] = useState<{value: string, label: string}[]>([]);
   const [listaMeses] = useState(getLast12Months());
@@ -114,62 +119,37 @@ const ComposicaoCarteira = () => {
         const resCamp = await api.get('/api/lista-campanhas');
         setListaCampanhas(resCamp.data.map((c: string) => ({ value: c, label: c })));
         
+        // Carrega dados assim que os filtros estiverem prontos
         buscarDadosDashboard();
-      } catch (error) { console.error("Erro filtros", error); }
+      } catch (error) { 
+          console.error("Erro filtros", error); 
+          buscarDadosDashboard(); // Tenta buscar mesmo sem filtros se der erro
+      }
     };
     carregarFiltros();
   }, []);
 
-  // --- LÓGICA DE PROCESSAMENTO SQL -> DASHBOARD ---
-  // Transforma a lista bruta da query SQL nos totais do card da esquerda
-  const processarDadosPrevistos = (listaBruta: any[]) => {
-    const resumo = { ...INITIAL_DATA.composicao };
-    
-    if (!Array.isArray(listaBruta)) return resumo;
-
-    listaBruta.forEach(item => {
-        // A Query retorna colunas: STATUS e VALOR (ou total_original dependendo do SQL final)
-        // Adaptar chaves conforme retorno exato do seu SQL
-        const status = item.STATUS || item.status || ""; 
-        const valor = Number(item.VALOR || item.total_original || item.valor || 0);
-
-        resumo.totalCasos += valor;
-
-        if (status === 'Novo') resumo.casosNovos += valor;
-        else if (status === 'Previsão') resumo.acordosVencer += valor;
-        else if (status === 'Corrente') resumo.colchaoCorrente += valor;
-        else if (status === 'Inadimplido') resumo.colchaoInadimplido += valor;
-    });
-
-    return resumo;
-  };
-
+  // --- BUSCA DE DADOS (SIMPLIFICADA) ---
   const buscarDadosDashboard = async () => {
     setLoading(true);
     try {
-      const filtros = {
-        data_referencia: periodo,
-        negociador: selectedNegociador,
-        campanha: selectedCampanha
+      // 1. Monta o Payload (Objeto de dados para enviar)
+      const payload = {
+        data_referencia: periodo,       
+        negociador: selectedNegociador, 
+        campanha: selectedCampanha      
       };
+      
+      console.log("📤 Enviando filtros:", payload);
 
-      // Chamada PARALELA: Nova Rota (Previsto) + Rota Antiga (Realizado)
-      const [resPrevisto, resRealizado] = await Promise.all([
-        api.get('/api/composicao-carteira-prevista', { params: filtros }),
-        api.post('/api/composicao-carteira', filtros)
-      ]);
-
-      // 1. Processa o lado Esquerdo (Nova Rota)
-      const composicaoCalculada = processarDadosPrevistos(resPrevisto.data);
-
-      // 2. Pega o lado Direito (Rota Antiga - assume que ela retorna 'realizado')
-      const realizadoBackend = resRealizado.data?.realizado || INITIAL_DATA.realizado;
-
-      setData({
-        composicao: composicaoCalculada,
-        realizado: realizadoBackend
-      });
-
+      // 2. Faz uma ÚNICA chamada POST para o Python
+      // O Python agora é inteligente e devolve { composicao: ..., realizado: ... }
+      const response = await api.post('/api/composicao-carteira', payload);
+      
+      if (response.data) {
+        console.log("📥 Dados Recebidos:", response.data);
+        setData(response.data);
+      }
     } catch (error) {
       console.error("❌ Erro ao buscar dashboard:", error);
     } finally {
@@ -177,11 +157,11 @@ const ComposicaoCarteira = () => {
     }
   };
 
-  const safeComposicao = data.composicao;
-  const safeRealizado = data.realizado;
+  const safeComposicao = data.composicao || INITIAL_DATA.composicao;
+  const safeRealizado = data.realizado || INITIAL_DATA.realizado;
   const totalRecebido = safeRealizado.caixaTotal || 1; 
 
-  // Cálculos de Porcentagem
+  // Cálculos de Porcentagem para o Gráfico
   const pctNovos = (safeRealizado.novosAcordos / totalRecebido) * 100;
   const pctVencer = (safeRealizado.colchaoAntecipado / totalRecebido) * 100;
   const pctCorrente = (safeRealizado.colchaoCorrente / totalRecebido) * 100;
@@ -189,7 +169,8 @@ const ComposicaoCarteira = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans text-slate-900">
-      {/* ... (HEADER PERMANECE IGUAL AO SEU CÓDIGO ANTERIOR) ... */}
+      
+      {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-12">
             <Link to="/" className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-1 cursor-pointer">MCSA</Link>
@@ -206,7 +187,7 @@ const ComposicaoCarteira = () => {
       <main className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 pb-20">
         <div className="mb-8">
             <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase mb-1">Composição da Carteira</h1>
-            <p className="text-slate-500 font-medium text-sm">Visão analítica prevista vs realizada.</p>
+            <p className="text-slate-500 font-medium text-sm">Visão analítica e financeira dos casos.</p>
         </div>
 
         {/* FILTROS */}
@@ -225,7 +206,7 @@ const ComposicaoCarteira = () => {
 
         {/* GRID PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* ESQUERDA: COMPOSIÇÃO (DADOS DA NOVA ROTA) */}
+            {/* ESQUERDA: PREVISTO */}
             <div>
                 <div className="flex items-center gap-2 mb-4 pl-1">
                     <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md"><Briefcase className="w-4 h-4" /></div>
@@ -240,7 +221,7 @@ const ComposicaoCarteira = () => {
                 </div>
             </div>
 
-            {/* DIREITA: REALIZADO (DADOS DA ROTA ANTIGA) */}
+            {/* DIREITA: REALIZADO */}
             <div>
                 <div className="flex items-center gap-2 mb-4 pl-1">
                     <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><CheckCircle2 className="w-4 h-4" /></div>
@@ -256,7 +237,7 @@ const ComposicaoCarteira = () => {
             </div>
         </div>
 
-        {/* GRÁFICO (MANTIDO) */}
+        {/* GRÁFICO */}
         <div className="mt-12 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 mb-8">
                 <BarChart2 className="w-5 h-5 text-slate-400" />

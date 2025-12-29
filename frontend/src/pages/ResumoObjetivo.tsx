@@ -70,7 +70,7 @@ export default function ResumoObjetivos() {
     try {
       const credoresParaEnviar = credorSelecionado ? [credorSelecionado] : [];
       // ATENÇÃO: Rota específica para este painel
-      const response = await fetch("http:// https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/resumo-objetivos", {
+      const response = await fetch(" https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/resumo-objetivos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data_inicio: dataInicio, data_fim: dataFim, credores: credoresParaEnviar })

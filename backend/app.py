@@ -12,7 +12,7 @@ from flask_cors import CORS
 from sqlalchemy import text, or_
 from database import SessionLocal
 from routes.rotas_telemetria import telemetry_bp, get_manager_dashboard
-from models import Clientes, User, TBAcompanhamento
+from models import Clientes, User, TBAcompanhamento, UserCampanha
 from sqlalchemy import Column, Integer, String, Float, func, case, extract# Importações de Serviços (Fallback seguro)
 try:
     from utilities.negociador_service import get_resumo_celulas,calcular_projecao

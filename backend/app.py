@@ -675,29 +675,24 @@ def get_dashboard_carteira_api():
         return jsonify({"error": str(e)}), 500
     
 @app.route('/api/composicao-carteira', methods=['POST'])
-def get_composicao_carteira():
-    """
-    Nova rota específica para a página 'Composição da Carteira'.
-    Usa a nova função 'get_dados_composicao_especifico' que corrige os filtros.
-    """
-    print("🚀 [ROTA NOVA] Chamando /api/composicao-carteira")
+def composicao_carteira():
     try:
-        filtros = request.json or {}
+        # Pega os filtros enviados pelo React (JSON)
+        filtros = request.json 
         
-        # Chama a função nova dedicada
-        dados = get_dados_composicao_especifico(filtros, engine_fin)
-        
-        # Sanitização (Garante zeros se vier vazio)
-        if not dados:
-            dados = {
-                "composicao": {"casosNovos": 0, "acordosVencer": 0, "colchaoCorrente": 0, "colchaoInadimplido": 0, "totalCasos": 0},
-                "realizado": {"novosAcordos": 0, "colchaoAntecipado": 0, "colchaoCorrente": 0, "colchaoInadimplido": 0, "caixaTotal": 0}
-            }
+        print(f"📡 Recebendo pedido de Composição: {filtros}")
 
-        return jsonify(dados), 200
+        # Chama sua função poderosa
+        resultado = get_dados_composicao_especifico(filtros, engine)
+
+        if resultado:
+            return jsonify(resultado), 200
+        else:
+            # Se der erro interno na função e retornar None
+            return jsonify({"error": "Erro ao processar dados"}), 500
 
     except Exception as e:
-        print(f"❌ Erro Rota Composição: {e}")
+        print(f"❌ Erro na rota: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/painel-objetivo', methods=['POST'])

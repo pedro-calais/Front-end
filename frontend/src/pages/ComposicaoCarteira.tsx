@@ -155,24 +155,30 @@ const ComposicaoCarteira = () => {
     carregarFiltros();
   }, []);
 
+  // --- FUNÇÃO PRINCIPAL DE BUSCA (SIMPLIFICADA) ---
   const buscarDadosDashboard = async () => {
     setLoading(true);
     try {
+      // Prepara os filtros para enviar ao Python
       const payload = {
-        data_referencia: periodo,
-        negociador: selectedNegociador,
-        campanha: selectedCampanha
+        data_referencia: periodo,       // Ex: "2025-12"
+        negociador: selectedNegociador, // Ex: "Ana" ou ""
+        campanha: selectedCampanha      // Ex: "Santander" ou ""
       };
       
+      console.log("📤 Enviando filtros:", payload);
+
+      // Uma única chamada resolve tudo!
       const response = await api.post('/api/composicao-carteira', payload);
       
-      // Validação simples: se vier vazio, mantém o atual ou usa inicial
       if (response.data) {
+        console.log("📥 Dados Recebidos:", response.data);
+        // O Python já manda no formato { composicao: {...}, realizado: {...} }
+        // Então basta setar direto!
         setData(response.data);
       }
     } catch (error) {
-      console.error("Erro ao buscar dashboard:", error);
-      // Não zera os dados em caso de erro de rede, apenas avisa no console
+      console.error("❌ Erro ao buscar dashboard:", error);
     } finally {
       setLoading(false);
     }

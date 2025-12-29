@@ -713,22 +713,25 @@ def get_painel_objetivo():
         session.close()
 
 @app.route('/painel-objetivo/opcoes', methods=['GET'])
-def get_opcoes_painel():
+def opcoes_filtros():
+    # 1. ABRE A CONEXÃO (A CHAVE DO COFRE)
+    db = SessionLocal()
+    
     try:
-        print("Buscando opções de filtros...")
+        print("🚀 [ROTA] Buscando opções de filtros (Negociadores/Campanhas)...")
 
-        # 1. Buscar Negociadores (Usuários com nível 'Negociador')
-        # Ajuste o filtro conforme sua lógica de nível de acesso
-        negociadores_db = session.query(User).filter(User.ativo == True).all()
+        # 2. Buscar Negociadores (Usa 'db' em vez de 'session')
+        # Filtra apenas usuários ativos para não sujar a lista
+        negociadores_db = db.query(User).filter(User.ativo == True).all()
+        
         lista_negociadores = [
             {"label": u.name, "value": u.name} 
             for u in negociadores_db
         ]
 
-        # 2. Buscar Estrutura Credor -> Campanhas
-        # Vamos buscar da tabela UserCampanha (ou da tabela de fatos, se preferir)
+        # 3. Buscar Estrutura Credor -> Campanhas
         # O distinct garante que não venha duplicado
-        campanhas_db = session.query(UserCampanha.credor, UserCampanha.campanha).distinct().all()
+        campanhas_db = db.query(UserCampanha.credor, UserCampanha.campanha).distinct().all()
 
         mapa_credores = {}
 
@@ -743,20 +746,26 @@ def get_opcoes_painel():
             if campanha and campanha not in mapa_credores[credor]:
                 mapa_credores[credor].append(campanha)
 
-        # 3. Ordenar as listas para ficar bonito no front
+        # 4. Ordenar as listas para ficar bonito no front
         for credor in mapa_credores:
             mapa_credores[credor].sort()
+            
+        print(f"✅ [SUCESSO] Encontrados {len(lista_negociadores)} negociadores e {len(mapa_credores)} credores.")
 
         response_data = {
             "negociadores": lista_negociadores,
-            "credores_campanhas": mapa_credores # <--- ESSA É A CHAVE QUE O REACT PROCURA
+            "credores_campanhas": mapa_credores
         }
 
         return jsonify(response_data), 200
 
     except Exception as e:
-        print(f"Erro ao buscar opções: {e}")
+        print(f"❌ [ERRO] Falha ao buscar opções: {e}")
         return jsonify({"error": str(e)}), 500
+        
+    finally:
+        # 5. IMPORTANTE: FECHAR A CONEXÃO SEMPRE
+        db.close()
     
 
 @app.route("/negociador_celula/resumo", methods=["GET"])

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// Interface do Usuário (igual ao que vem do seu Backend)
+// Interface do Usuário
 export interface UserProfile {
   id: string | number;
   name: string;
@@ -16,7 +16,7 @@ interface AuthState {
   user: UserProfile | null;
   token: string | null; // Adicionamos o token aqui para salvar
   
-  // A função login agora recebe o Usuário pronto e o Token
+  
   login: (user: UserProfile, token: string) => void;
   
   logout: () => void;

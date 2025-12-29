@@ -6,11 +6,11 @@ import {
   CheckCircle2, XCircle, Wallet, ArrowRight, Calendar, Users, Tag, Loader2
 } from "lucide-react";
 
-// --- 1. TIPAGEM DO FRONTEND (Como o React usa) ---
+// --- TIPAGEM ---
 interface DashboardData {
   composicao: {
     casosNovos: number;
-    acordosVencer: number; 
+    acordosVencer: number;
     colchaoCorrente: number;
     colchaoInadimplido: number;
     totalCasos: number;
@@ -24,7 +24,6 @@ interface DashboardData {
   };
 }
 
-// Inicializa com zeros
 const INITIAL_DATA: DashboardData = {
   composicao: { casosNovos: 0, acordosVencer: 0, colchaoCorrente: 0, colchaoInadimplido: 0, totalCasos: 0 },
   realizado: { novosAcordos: 0, colchaoAntecipado: 0, colchaoCorrente: 0, colchaoInadimplido: 0, caixaTotal: 0 }
@@ -40,14 +39,14 @@ const getLast12Months = () => {
   for (let i = 0; i < 12; i++) {
     const d = new Date(date.getFullYear(), date.getMonth() - i, 1);
     months.push({ 
-        value: d.toISOString().slice(0, 7), // Formato YYYY-MM
+        value: d.toISOString().slice(0, 7), 
         label: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) 
     });
   }
   return months;
 };
 
-// --- COMPONENTES AUXILIARES (UI) ---
+// --- COMPONENTES AUXILIARES ---
 const FilterSelect = ({ label, placeholder, icon: Icon, options, value, onChange, disabled = false }: any) => (
   <div className="flex-1 min-w-[200px]">
     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-1.5">
@@ -102,11 +101,11 @@ const ComposicaoCarteira = () => {
   const [data, setData] = useState<DashboardData>(INITIAL_DATA);
   
   // Filtros
-  const [periodo, setPeriodo] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [periodo, setPeriodo] = useState(new Date().toISOString().slice(0, 7));
   const [selectedNegociador, setSelectedNegociador] = useState("");
   const [selectedCampanha, setSelectedCampanha] = useState("");
   
-  // Listas para Selects
+  // Listas
   const [listaNegociadores, setListaNegociadores] = useState<{value: string, label: string}[]>([]);
   const [listaCampanhas, setListaCampanhas] = useState<{value: string, label: string}[]>([]);
   const [listaMeses] = useState(getLast12Months());
@@ -114,78 +113,45 @@ const ComposicaoCarteira = () => {
   useEffect(() => {
     const carregarFiltros = async () => {
       try {
-        // Carrega Negociadores (Assume que o endpoint retorna id e name)
-        // OBS: O backend pede 'negociador_ID', então tentamos usar o ID como value.
         const resUsers = await api.get('/users');
-        const optsNeg = resUsers.data.map((u: any) => ({ 
-            value: u.id || u.name, // Usa ID se tiver, senão usa Nome
-            label: u.name 
-        }));
-        setListaNegociadores(optsNeg);
+        setListaNegociadores(resUsers.data.map((u: any) => ({ value: String(u.id), label: u.name })));
         
-        // Carrega Campanhas (Usando o novo endpoint sugerido ou o existente)
-        const resCamp = await api.get('/api/lista-campanhas'); 
-        // Adapte aqui conforme o retorno real de lista-campanhas.
-        // Se retornar lista de strings: c => ({ value: c, label: c })
-        // Se retornar objetos {id, nome}: c => ({ value: c.id, label: c.nome })
-        const optsCamp = Array.isArray(resCamp.data) 
-            ? resCamp.data.map((c: any) => ({ value: c.id || c, label: c.nome || c }))
-            : [];
-        setListaCampanhas(optsCamp);
-
-        // Busca inicial
+        const resCamp = await api.get('/api/lista-campanhas');
+        setListaCampanhas(resCamp.data.map((c: string) => ({ value: c, label: c })));
+        
+        // Carrega dados assim que os filtros estiverem prontos
         buscarDadosDashboard();
       } catch (error) { 
-          console.error("Erro ao carregar filtros", error);
-          // Tenta buscar dados mesmo se filtros falharem
-          buscarDadosDashboard();
+          console.error("Erro filtros", error); 
+          buscarDadosDashboard(); // Tenta buscar mesmo sem filtros se der erro
       }
     };
     carregarFiltros();
   }, []);
 
-  // --- BUSCA E MAPEAMENTO DE DADOS ---
+  // --- BUSCA DE DADOS (SIMPLIFICADA) ---
   const buscarDadosDashboard = async () => {
     setLoading(true);
     try {
-      // 1. Preparar Parâmetros (GET Query Params)
-      const params = {
-        // O backend espera YYYY-MM-DD. Adicionamos o dia 01 se estiver só YYYY-MM
-        referencia: periodo.length === 7 ? `${periodo}-01` : periodo,
-        // Envia IDs (se o usuário selecionou algo)
-        negociador_ID: selectedNegociador, 
-        campanha_ID: selectedCampanha 
+      // 1. Monta o Payload (Objeto de dados para enviar)
+      const params: Record<string, string> = {
+        referencia: `${periodo}-01`
       };
+      if (selectedCampanha) {
+        params.campanha_ID = selectedCampanha;
+      }
+      if (selectedNegociador) {
+        params.negociador_ID = selectedNegociador;
+      }
 
-      console.log("📤 GET /api/composicao-carteira Params:", params);
+      console.log("Enviando filtros:", params);
 
-      // 2. Chamada GET
+      // 2. Faz uma unica chamada GET para o Python (backend ja agrega)
       const response = await api.get('/api/composicao-carteira', { params });
       
       if (response.data) {
-        console.log("📥 Dados Recebidos (Brutos):", response.data);
-        
-        // 3. Mapeamento (Backend snake_case -> Frontend camelCase)
-        const backendData = response.data;
-        
-        const mapeado: DashboardData = {
-            composicao: {
-                casosNovos:         Number(backendData.composicao?.novos_acordos || 0),
-                acordosVencer:      Number(backendData.composicao?.a_vencer || 0),
-                colchaoCorrente:    Number(backendData.composicao?.colchao_corrente || 0),
-                colchaoInadimplido: Number(backendData.composicao?.colchao_inadimplido || 0),
-                totalCasos:         Number(backendData.composicao?.total_geral || 0),
-            },
-            realizado: {
-                novosAcordos:       Number(backendData.realizado?.novos_acordos_rec || 0),
-                colchaoAntecipado:  Number(backendData.realizado?.antecipado || 0),
-                colchaoCorrente:    Number(backendData.realizado?.corrente_recebido || 0),
-                colchaoInadimplido: Number(backendData.realizado?.inadimplido_rec || 0),
-                caixaTotal:         Number(backendData.realizado?.caixa_total || 0),
-            }
-        };
-
-        setData(mapeado);
+        console.log("📥 Dados Recebidos:", response.data);
+        setData(response.data);
       }
     } catch (error) {
       console.error("❌ Erro ao buscar dashboard:", error);
@@ -194,12 +160,11 @@ const ComposicaoCarteira = () => {
     }
   };
 
-  const safeComposicao = data.composicao;
-  const safeRealizado = data.realizado;
-  // Evita divisão por zero
+  const safeComposicao = data.composicao || INITIAL_DATA.composicao;
+  const safeRealizado = data.realizado || INITIAL_DATA.realizado;
   const totalRecebido = safeRealizado.caixaTotal || 1; 
 
-  // Cálculos de % para o Gráfico
+  // Cálculos de Porcentagem para o Gráfico
   const pctNovos = (safeRealizado.novosAcordos / totalRecebido) * 100;
   const pctVencer = (safeRealizado.colchaoAntecipado / totalRecebido) * 100;
   const pctCorrente = (safeRealizado.colchaoCorrente / totalRecebido) * 100;
@@ -225,7 +190,7 @@ const ComposicaoCarteira = () => {
       <main className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 pb-20">
         <div className="mb-8">
             <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase mb-1">Composição da Carteira</h1>
-            <p className="text-slate-500 font-medium text-sm">Dashboard Analítico (Dados Consolidados).</p>
+            <p className="text-slate-500 font-medium text-sm">Visão analítica e financeira dos casos.</p>
         </div>
 
         {/* FILTROS */}
@@ -237,29 +202,29 @@ const ComposicaoCarteira = () => {
                     <FilterSelect label="Campanha" placeholder="Todas" icon={Tag} options={listaCampanhas} value={selectedCampanha} onChange={setSelectedCampanha} />
                 </div>
                 <button onClick={buscarDadosDashboard} disabled={loading} className="w-full lg:w-auto px-8 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md flex items-center justify-center gap-2 h-[46px] active:scale-[0.98] disabled:opacity-70">
-                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Filter className="w-3 h-3" />} Filtrar Dados
+                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Filter className="w-3 h-3" />} Aplicar Filtros
                 </button>
             </div>
         </div>
 
         {/* GRID PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* ESQUERDA: COMPOSIÇÃO (Dados mapeados de 'composicao') */}
+            {/* ESQUERDA: PREVISTO */}
             <div>
                 <div className="flex items-center gap-2 mb-4 pl-1">
                     <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md"><Briefcase className="w-4 h-4" /></div>
-                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide">Composição (Carteira)</h2>
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide">Previsão (Carteira)</h2>
                 </div>
                 <div className="space-y-4">
-                    <StyledCard label="Novos Casos (Entrada)" value={formatCurrency(safeComposicao.casosNovos)} colorClass="border-blue-500" icon={Briefcase} />
-                    <StyledCard label="A Vencer" value={formatCurrency(safeComposicao.acordosVencer)} colorClass="border-amber-400" icon={Clock} />
-                    <StyledCard label="Colchão Corrente" value={formatCurrency(safeComposicao.colchaoCorrente)} colorClass="border-emerald-500" icon={CheckCircle2} />
-                    <StyledCard label="Colchão Inadimplido" value={formatCurrency(safeComposicao.colchaoInadimplido)} colorClass="border-red-500" icon={XCircle} />
-                    <StyledCard label="Total Carteira" value={formatCurrency(safeComposicao.totalCasos)} colorClass="border-purple-500" icon={Wallet} />
+                    <StyledCard label="Novos Casos (Previsto)" value={formatCurrency(safeComposicao.casosNovos)} colorClass="border-blue-500" icon={Briefcase} />
+                    <StyledCard label="Acordos a Vencer (Previsão)" value={formatCurrency(safeComposicao.acordosVencer)} colorClass="border-amber-400" icon={Clock} />
+                    <StyledCard label="Colchão Corrente (Previsto)" value={formatCurrency(safeComposicao.colchaoCorrente)} colorClass="border-emerald-500" icon={CheckCircle2} />
+                    <StyledCard label="Colchão Inadimplido (Previsto)" value={formatCurrency(safeComposicao.colchaoInadimplido)} colorClass="border-red-500" icon={XCircle} />
+                    <StyledCard label="Total da Carteira" value={formatCurrency(safeComposicao.totalCasos)} colorClass="border-purple-500" icon={Wallet} />
                 </div>
             </div>
 
-            {/* DIREITA: REALIZADO (Dados mapeados de 'realizado') */}
+            {/* DIREITA: REALIZADO */}
             <div>
                 <div className="flex items-center gap-2 mb-4 pl-1">
                     <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><CheckCircle2 className="w-4 h-4" /></div>
@@ -275,23 +240,23 @@ const ComposicaoCarteira = () => {
             </div>
         </div>
 
-        {/* GRÁFICO (Baseado nos dados do Realizado) */}
+        {/* GRÁFICO */}
         <div className="mt-12 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 mb-8">
                 <BarChart2 className="w-5 h-5 text-slate-400" />
-                <h3 className="text-base font-black text-slate-800 uppercase tracking-wide">Distribuição do Realizado</h3>
+                <h3 className="text-base font-black text-slate-800 uppercase tracking-wide">Performance de Recuperação</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                 <div className="space-y-2">
                     <ProgressBar label="Novos Acordos" value={pctNovos} valueText={formatCurrency(safeRealizado.novosAcordos)} color="bg-blue-500" />
-                    <ProgressBar label="Antecipados" value={pctVencer} valueText={formatCurrency(safeRealizado.colchaoAntecipado)} color="bg-amber-400" />
-                    <ProgressBar label="Corrente" value={pctCorrente} valueText={formatCurrency(safeRealizado.colchaoCorrente)} color="bg-emerald-500" />
-                    <ProgressBar label="Inadimplido" value={pctInadimplido} valueText={formatCurrency(safeRealizado.colchaoInadimplido)} color="bg-red-500" />
+                    <ProgressBar label="Acordos a Vencer" value={pctVencer} valueText={formatCurrency(safeRealizado.colchaoAntecipado)} color="bg-amber-400" />
+                    <ProgressBar label="Colchão Corrente" value={pctCorrente} valueText={formatCurrency(safeRealizado.colchaoCorrente)} color="bg-emerald-500" />
+                    <ProgressBar label="Colchão Inadimplido" value={pctInadimplido} valueText={formatCurrency(safeRealizado.colchaoInadimplido)} color="bg-red-500" />
                 </div>
                 <div className="flex flex-col items-center justify-center">
                     <div className="relative w-64 h-64 rounded-full" style={{ background: `conic-gradient(#3b82f6 0% ${pctNovos}%, #fbbf24 ${pctNovos}% ${pctNovos + pctVencer}%, #10b981 ${pctNovos + pctVencer}% ${pctNovos + pctVencer + pctCorrente}%, #ef4444 ${pctNovos + pctVencer + pctCorrente}% 100%)` }}>
                         <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Caixa</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Realizado</span>
                             <span className="text-3xl font-black text-slate-900 tracking-tight">
                                 {new Intl.NumberFormat('pt-BR', { notation: "compact", compactDisplay: "short", style: "currency", currency: "BRL" }).format(safeRealizado.caixaTotal)}
                             </span>

@@ -5,7 +5,7 @@ import axios from 'axios';
  * Deve apontar para o endereço onde a API está sendo executada.
  * @constant {string}
  */
-const API_URL = ' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev'; 
+const API_URL = 'https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev'; 
 
 /**
  * Instância singleton do Axios configurada para a aplicação.

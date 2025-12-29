@@ -60,11 +60,11 @@ const AcionamentosPage: React.FC = () => {
   useEffect(() => {
     const carregarOpcoes = async () => {
       try {
-        const resCampanhas = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-campanhas');
+        const resCampanhas = await fetch('https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-campanhas');
         const dataCampanhas = await resCampanhas.json();
         setListaCampanhas(dataCampanhas);
 
-        const resNegociadores = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-negociadores');
+        const resNegociadores = await fetch('https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/lista-negociadores');
         if (resNegociadores.ok) {
             const dataNegociadores = await resNegociadores.json();
             if (Array.isArray(dataNegociadores)) {
@@ -86,7 +86,7 @@ const AcionamentosPage: React.FC = () => {
     setPaginaAtual(1); 
     
     try {
-      const response = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/acionamentos/listar', {
+      const response = await fetch('https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/acionamentos/listar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filtros)
@@ -107,7 +107,7 @@ const AcionamentosPage: React.FC = () => {
   const handleExportarExcel = async () => {
     setExporting(true);
     try {
-      const response = await fetch(' https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/acionamentos/exportar', {
+      const response = await fetch('https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/api/acionamentos/exportar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filtros)
@@ -142,7 +142,7 @@ const AcionamentosPage: React.FC = () => {
       return;
     }
     try {
-      const response = await fetch(` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/clientes/buscar?q=${texto}`);
+      const response = await fetch(`https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/clientes/buscar?q=${texto}`);
       const data = await response.json();
       setSugestoesClientes(data);
       setMostrarSugestoes(true);

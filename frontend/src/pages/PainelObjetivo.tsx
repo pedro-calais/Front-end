@@ -133,7 +133,7 @@ const PainelObjetivo = () => {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const response = await fetch(" https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo/opcoes");
+        const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo/opcoes");
         if (response.ok) {
           const result = await response.json();
           // Normaliza para camelCase caso venha snake_case
@@ -170,7 +170,7 @@ const PainelObjetivo = () => {
   const fetchDashboardData = async () => {
     setIsLoadingData(true);
     try {
-      const response = await fetch(" https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo", {
+      const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(filters)

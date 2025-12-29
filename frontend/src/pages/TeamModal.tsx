@@ -48,7 +48,7 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const handleDelete = async (id: number) => {
     if (confirm("Tem certeza que deseja inativar/remover este usuário?")) {
       try {
-        await fetch(` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${id}`, { method: 'DELETE' });
+        await fetch(`https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${id}`, { method: 'DELETE' });
         // Atualiza lista localmente para ser rápido
         setUsers(users.filter(u => u.id !== id));
       } catch (error) {
@@ -76,8 +76,8 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
 
     try {
         const url = editingUser 
-            ? ` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
-            : ` https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
+            ? `https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
+            : `https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
             
         const method = editingUser ? 'PUT' : 'POST';
 

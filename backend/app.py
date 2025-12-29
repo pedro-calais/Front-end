@@ -678,10 +678,26 @@ def get_dashboard_carteira_api():
         return jsonify({"error": str(e)}), 500
     
     
-@app.route('/api/composicao-carteira', methods=['POST'])
+@app.route('/api/composicao-carteira', methods=['GET', 'POST'])
 def composicao_carteira():
     try:
-        filtros = request.json or {}
+        filtros = {}
+        if request.method == 'GET':
+            referencia = request.args.get('referencia')
+            campanha = request.args.get('campanha_ID')
+            negociador = request.args.get('negociador_ID')
+        else:
+            payload = request.json or {}
+            referencia = payload.get('data_referencia') or payload.get('referencia')
+            campanha = payload.get('campanha') or payload.get('campanha_ID')
+            negociador = payload.get('negociador') or payload.get('negociador_ID')
+
+        if referencia:
+            filtros['data_referencia'] = referencia[:7]
+        if campanha:
+            filtros['campanha'] = campanha
+        if negociador:
+            filtros['negociador'] = negociador
 
         print(f"[COMPOSICAO] Recebendo pedido: {filtros}")
 
@@ -689,62 +705,7 @@ def composicao_carteira():
         if not resultado:
             return jsonify({"error": "Erro ao processar dados"}), 500
 
-        composicao = resultado.get("composicao", {})
-        realizado = resultado.get("realizado", {})
-
-        caixa_total = float(realizado.get("caixaTotal", 0.0) or 0.0)
-        meta_mensal = 3000000.0
-        percentual = (caixa_total / meta_mensal * 100) if meta_mensal > 0 else 0.0
-
-        data_ref_str = filtros.get("data_referencia") or datetime.now().strftime("%Y-%m")
-        try:
-            ano_ref, mes_ref = map(int, data_ref_str.split("-"))
-        except Exception:
-            hoje = datetime.now()
-            ano_ref, mes_ref = hoje.year, hoje.month
-
-        import calendar
-        dias_no_mes = calendar.monthrange(ano_ref, mes_ref)[1]
-        hoje = datetime.now()
-        dia_hoje = hoje.day if (hoje.year == ano_ref and hoje.month == mes_ref) else 1
-        dias_restantes = max(1, dias_no_mes - dia_hoje)
-
-        necessario = max(0.0, meta_mensal - caixa_total)
-        media_diaria = necessario / dias_restantes if necessario > 0 else 0.0
-
-        response_data = {
-            "composicao_carteira": {
-                "novos_acordos": float(composicao.get("casosNovos", 0.0) or 0.0),
-                "a_vencer": float(composicao.get("acordosVencer", 0.0) or 0.0),
-                "colchao_corrente": float(composicao.get("colchaoCorrente", 0.0) or 0.0),
-                "colchao_inadimplido": float(composicao.get("colchaoInadimplido", 0.0) or 0.0),
-                "total_geral": float(composicao.get("totalCasos", 0.0) or 0.0)
-            },
-            "realizado_caixa": {
-                "novos_acordos_rec": float(realizado.get("novosAcordos", 0.0) or 0.0),
-                "antecipado": float(realizado.get("colchaoAntecipado", 0.0) or 0.0),
-                "corrente_recebido": float(realizado.get("colchaoCorrente", 0.0) or 0.0),
-                "inadimplido_rec": float(realizado.get("colchaoInadimplido", 0.0) or 0.0),
-                "caixa_total": caixa_total
-            },
-            "meta_global": {
-                "atingido_valor": caixa_total,
-                "meta_total_valor": meta_mensal,
-                "percentual": round(percentual, 1)
-            },
-            "simulador": {
-                "valor_escolhido": 0.0,
-                "ddal_atual": 0.0
-            },
-            "performance_projetada": {
-                "necessario": necessario,
-                "realizado": caixa_total,
-                "diferenca": necessario,
-                "media_diaria": media_diaria
-            }
-        }
-
-        return jsonify(response_data), 200
+        return jsonify(resultado), 200
 
     except Exception as e:
         print(f"[COMPOSICAO] Erro na rota: {e}")

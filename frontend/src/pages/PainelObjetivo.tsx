@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { 
-   
   Filter, 
   Calendar, 
   Download,
@@ -18,6 +17,8 @@ import {
   Check, 
   X
 } from "lucide-react";
+// 1. IMPORTANTE: Importamos a API blindada
+import { api } from "../api/api"; 
 
 // Função para converter chaves de snake_case para camelCase recursivamente
 function toCamelDeep(input: any): any {
@@ -108,7 +109,7 @@ const ModernGauge = ({ title, meta, realizado }: any) => {
   );
 };
 
-// --- COMPONENTE PRINCIPAL ---
+// --- COMPONENTES PRINCIPAL ---
 
 const PainelObjetivo = () => {
   const [data, setData] = useState(INITIAL_DATA);
@@ -129,19 +130,21 @@ const PainelObjetivo = () => {
     celula: ''
   });
 
-  // 1. BUSCAR OPÇÕES
+  // 1. BUSCAR OPÇÕES (AGORA COM API CORRETA)
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo/opcoes");
-        if (response.ok) {
-          const result = await response.json();
-          
-          // Normaliza para camelCase caso venha snake_case
-          const camelResult = toCamelDeep(result);
-          setOpcoesNegociadores(camelResult.negociadores || []);
-          setMapaCredores(camelResult.credoresCampanhas || camelResult.estruturaCredores || {});
-        }
+        // ✅ CORREÇÃO: Usando api.get (Removemos o link fixo e o fetch)
+        const response = await api.get("/painel-objetivo/opcoes");
+        
+        // Axios já devolve JSON em response.data
+        const result = response.data;
+        
+        // Normaliza para camelCase
+        const camelResult = toCamelDeep(result);
+        setOpcoesNegociadores(camelResult.negociadores || []);
+        setMapaCredores(camelResult.credoresCampanhas || camelResult.estruturaCredores || {});
+        
       } catch (error) {
         console.error("Erro ao carregar filtros:", error);
       } finally {
@@ -167,36 +170,29 @@ const PainelObjetivo = () => {
     }
   };
 
-  // 3. BUSCAR DADOS DO DASHBOARD
+  // 3. BUSCAR DADOS DO DASHBOARD (AGORA COM API CORRETA)
   const fetchDashboardData = async () => {
     setIsLoadingData(true);
     try {
-      const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/painel-objetivo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(filters)
-      });
+      // ✅ CORREÇÃO: Usando api.post
+      const response = await api.post("/painel-objetivo", filters);
 
-      if (response.ok) {
-        const rawData = await response.json();
-        console.log("Dados Brutos do Backend:", rawData);
+      const rawData = response.data;
+      console.log("Dados do Backend:", rawData);
 
-        // Normaliza as chaves para camelCase
-        const camelData = toCamelDeep(rawData);
-        console.log("Dados Normalizados:", camelData);
+      // Normaliza as chaves para camelCase
+      const camelData = toCamelDeep(rawData);
 
-        // Atualiza o estado garantindo a estrutura
-        setData(prev => ({
-            ...prev,
-            ...camelData, // Sobrescreve com os dados novos
-            caixa: { ...prev.caixa, ...camelData.caixa },
-            colchaoCorrente: { ...prev.colchaoCorrente, ...camelData.colchaoCorrente },
-            colchaoInadimplido: { ...prev.colchaoInadimplido, ...camelData.colchaoInadimplido },
-            parcelas: { ...prev.parcelas, ...camelData.parcelas }
-        }));
-      } else {
-        console.error("Erro na resposta da API:", response.status);
-      }
+      // Atualiza o estado garantindo a estrutura
+      setData(prev => ({
+          ...prev,
+          ...camelData, 
+          caixa: { ...prev.caixa, ...camelData.caixa },
+          colchaoCorrente: { ...prev.colchaoCorrente, ...camelData.colchaoCorrente },
+          colchaoInadimplido: { ...prev.colchaoInadimplido, ...camelData.colchaoInadimplido },
+          parcelas: { ...prev.parcelas, ...camelData.parcelas }
+      }));
+      
     } catch (error) {
       console.error("Erro de conexão:", error);
     } finally {
@@ -205,7 +201,6 @@ const PainelObjetivo = () => {
   };
 
   // --- RENDERIZAÇÃO ---
-  // Usa "data" diretamente, pois ele já foi atualizado e normalizado
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900">
       
@@ -334,11 +329,11 @@ const PainelObjetivo = () => {
                     <StatRow label="Tempo Incorrido" value={data.caixa.tempoIncorrido} isMoney={false} icon={Clock} colorClass="bg-slate-100 text-slate-600" />
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 space-y-1">
-                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-4 pl-1">Detalhamento</h3>
-                     <StatRow label="Recebido Novo" value={data.caixa.recebidoNovo} icon={ArrowUpRight} />
-                     <StatRow label="Recebido Inadimplido" value={data.caixa.recebidoInadimplido} icon={AlertCircle} colorClass="bg-orange-50 text-orange-500" />
-                     <StatRow label="Recebido Corrente" value={data.caixa.recebidoCorrente} icon={Check} colorClass="bg-green-50 text-green-500" />
-                     <StatRow label="Parc. Antecipadas" value={data.caixa.recebidoAntecipado} icon={Calendar} />
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-4 pl-1">Detalhamento</h3>
+                      <StatRow label="Recebido Novo" value={data.caixa.recebidoNovo} icon={ArrowUpRight} />
+                      <StatRow label="Recebido Inadimplido" value={data.caixa.recebidoInadimplido} icon={AlertCircle} colorClass="bg-orange-50 text-orange-500" />
+                      <StatRow label="Recebido Corrente" value={data.caixa.recebidoCorrente} icon={Check} colorClass="bg-green-50 text-green-500" />
+                      <StatRow label="Parc. Antecipadas" value={data.caixa.recebidoAntecipado} icon={Calendar} />
                 </div>
             </div>
 
@@ -348,10 +343,10 @@ const PainelObjetivo = () => {
                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-6 pl-1 flex items-center gap-2"><Target className="w-4 h-4 text-emerald-600" /> Performance Corrente</h3>
                     <ModernGauge title="Colchão Corrente Total" meta={data.colchaoCorrente.objetivoPct} realizado={data.colchaoCorrente.realizadoPct} />
                     <div className="space-y-1 mt-6">
-                         <StatRow label="A Vencer" value={data.colchaoCorrente.aVencer} icon={Clock} subtext="0 Clientes" />
-                         <StatRow label="Vencido até hoje" value={data.colchaoCorrente.vencidoAteData} icon={AlertCircle} colorClass="bg-red-50 text-red-500" subtext="0 Clientes" />
-                         <StatRow label="Recebido" value={data.colchaoCorrente.recebido} icon={Check} colorClass="bg-emerald-50 text-emerald-600" subtext="0 Clientes" />
-                         <StatRow label="Não Realizado" value={data.colchaoCorrente.naoRealizado} icon={X} colorClass="bg-slate-100 text-slate-400" subtext="0 Clientes" />
+                          <StatRow label="A Vencer" value={data.colchaoCorrente.aVencer} icon={Clock} subtext="0 Clientes" />
+                          <StatRow label="Vencido até hoje" value={data.colchaoCorrente.vencidoAteData} icon={AlertCircle} colorClass="bg-red-50 text-red-500" subtext="0 Clientes" />
+                          <StatRow label="Recebido" value={data.colchaoCorrente.recebido} icon={Check} colorClass="bg-emerald-50 text-emerald-600" subtext="0 Clientes" />
+                          <StatRow label="Não Realizado" value={data.colchaoCorrente.naoRealizado} icon={X} colorClass="bg-slate-100 text-slate-400" subtext="0 Clientes" />
                     </div>
                     <div className="mt-8 pt-6 border-t border-slate-100">
                         <h4 className="text-xs font-bold text-slate-400 uppercase mb-4">Projeção Futura</h4>

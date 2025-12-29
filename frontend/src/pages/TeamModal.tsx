@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus, Edit2, Trash2, Check, User, Mail, Shield, Search, Lock, UserCheck, Loader2 } from "lucide-react";
+// IMPORTANTE: Importe a api que configuramos antes
+import { api } from "../api/api"; 
 
-// Definição da Interface baseada no seu models.py
+// Definição da Interface
 interface UserData {
   id?: number;
   name: string;
@@ -18,15 +20,14 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const [isLoading, setIsLoading] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
 
-  // --- 1. BUSCAR DADOS (GET) ---
+  // --- 1. BUSCAR DADOS (GET) - AGORA COM API BLINDADA ---
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users");
-      if (!response.ok) throw new Error('Falha ao buscar');
-      
-      const data = await response.json();
-      setUsers(data); 
+      // ✅ CORREÇÃO: Usando api.get em vez de fetch
+      // O link base e o header do Ngrok já estão configurados no api.ts
+      const response = await api.get("/users");
+      setUsers(response.data); 
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
       setUsers([]); 
@@ -38,18 +39,19 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
-      setView('list'); // Sempre volta pra lista ao abrir
+      setView('list'); 
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // --- 2. DELETAR (DELETE) ---
+  // --- 2. DELETAR (DELETE) - AGORA COM API BLINDADA ---
   const handleDelete = async (id: number) => {
     if (confirm("Tem certeza que deseja inativar/remover este usuário?")) {
       try {
-        await fetch(`https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${id}`, { method: 'DELETE' });
-        // Atualiza lista localmente para ser rápido
+        // ✅ CORREÇÃO: Usando api.delete
+        await api.delete(`/users/${id}`);
+        // Atualiza lista localmente
         setUsers(users.filter(u => u.id !== id));
       } catch (error) {
         alert("Erro ao processar solicitação.");
@@ -57,46 +59,35 @@ const TeamModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
     }
   };
 
-  // --- 3. SALVAR (POST / PUT) ---
+  // --- 3. SALVAR (POST / PUT) - AGORA COM API BLINDADA ---
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     
-    // Montando o objeto para enviar ao Python
     const formData = {
         name: (form.elements.namedItem('name') as HTMLInputElement).value,
         username: (form.elements.namedItem('username') as HTMLInputElement).value,
         email: (form.elements.namedItem('email') as HTMLInputElement).value,
         access_level: (form.elements.namedItem('access_level') as HTMLSelectElement).value,
-        // Converte string "true"/"false" para boolean real
         ativo: (form.elements.namedItem('ativo') as HTMLSelectElement).value === 'true',
-        // Senha só envia se tiver valor
         password: (form.elements.namedItem('password') as HTMLInputElement)?.value || undefined
     };
 
     try {
-        const url = editingUser 
-            ? `https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users/${editingUser.id}` 
-            : `https://noncomprehendingly-unrescissable-ismael.ngrok-free.dev/users`;
-            
-        const method = editingUser ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Erro ao salvar');
+        // ✅ CORREÇÃO: Usando api.post ou api.put
+        if (editingUser && editingUser.id) {
+            await api.put(`/users/${editingUser.id}`, formData);
+        } else {
+            await api.post(`/users`, formData);
         }
 
         await fetchUsers(); // Recarrega a lista do banco
         setView('list');
         setEditingUser(null);
     } catch (error: any) {
-        alert(error.message || "Erro ao salvar dados.");
+        // Axios joga o erro dentro de error.response.data
+        const msg = error.response?.data?.error || error.message || "Erro ao salvar dados.";
+        alert(msg);
     }
   };
 

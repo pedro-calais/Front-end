@@ -1159,6 +1159,25 @@ def dashboard_metas():
         session.close()
 
 app.register_blueprint(telemetry_bp, url_prefix='/telemetry')
+
+# --- DEBUG: RASTREADOR DE TABELAS ---
+from sqlalchemy import inspect
+from database import engine
+
+print("\n" + "="*40)
+print("🕵️  INVESTIGAÇÃO DE TABELAS SQL")
+print("="*40)
+
+inspector = inspect(engine)
+tabelas_reais = inspector.get_table_names() # Pega nomes brutos do banco
+
+print(f"Total encontrado: {len(tabelas_reais)} tabelas.")
+print("Lista oficial do Banco de Dados:")
+for t in tabelas_reais:
+    print(f" -> '{t}'")
+
+print("="*40 + "\n")
+# ------------------------------------
 # ==============================================================================
 # 🚀 PONTO DE ENTRADA DO SERVIDOR 
 # ==============================================================================

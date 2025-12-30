@@ -70,7 +70,7 @@ const LoginPage = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2">MCSA</h1>
-          <p className="text-slate-500 font-medium">Login to access the dashboard.</p>
+          <p className="text-slate-500 font-medium">Faça login para acessar o painel.</p>
         </div>
 
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50">

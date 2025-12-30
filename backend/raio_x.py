@@ -1,75 +1,65 @@
 import pandas as pd
 from sqlalchemy import text
-from database import engine_std  # Usando a conexão do servidor STD2016
+from database import engine  # Usamos a engine do Painel que tem o Link Server
+
+# CPFs extraídos das suas imagens
+CLIENTES_TESTE = [
+    {"nome": "Pedro Alves", "cpf": "71010842498"},        # Imagem 2 (Vazio)
+    {"nome": "Roberto de Andrade", "cpf": "03319177699"}, # Imagem 4 (Cheio em um, vazio no outro)
+    {"nome": "Bruno Ferreira", "cpf": "88817016268"}      # Imagem 3 (Só pagos)
+]
 
 print("="*60)
-print("🕵️  RAIO-X: MAPEAMENTO DE CLIENTES E CAMPANHAS (STD)")
+print("🕵️  RAIO-X: VERIFICANDO A TABELA MÁGICA [tabelatitulos]")
 print("="*60)
 
 try:
-    with engine_std.connect() as conn:
+    with engine.connect() as conn:
         
-        # --- 1. INVESTIGAR TABELA DE PESSOAS (Para achar o ID e Documento) ---
-        print("\n1️⃣  Analisando tabela [Pessoas]...")
-        try:
-            # Pega as 3 primeiras linhas para vermos os nomes das colunas e o formato dos dados
-            df_pessoas = pd.read_sql(text("SELECT TOP 3 * FROM Pessoas"), conn)
+        for cli in CLIENTES_TESTE:
+            cpf_limpo = cli['cpf']
+            # Cria versão formatada (XXX.XXX.XXX-XX) caso o banco use assim
+            cpf_formatado = f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
             
-            if not df_pessoas.empty:
-                cols = list(df_pessoas.columns)
-                print(f"   📋 Colunas encontradas: {cols}")
-                
-                # Tenta identificar as colunas chave automaticamente para te ajudar
-                col_id = [c for c in cols if 'ID' in c.upper() and 'PESSOA' in c.upper()]
-                col_doc = [c for c in cols if 'DOC' in c.upper() or 'CPF' in c.upper() or 'CGC' in c.upper()]
-                
-                print(f"   👉 Possível Coluna de ID: {col_id}")
-                print(f"   👉 Possível Coluna de CPF/CNPJ: {col_doc}")
-                print(f"   📊 Amostra de dados:\n{df_pessoas.head(1).to_string(index=False)}")
-            else:
-                print("   ⚠️ Tabela Pessoas existe mas está vazia.")
-        except Exception as e:
-            print(f"   ❌ Erro ao ler Pessoas: {e}")
-
-        
-        # --- 2. INVESTIGAR TABELA DE CAMPANHAS (Para achar o ID numérico) ---
-        print("\n2️⃣  Analisando tabela [Campanhas]...")
-        try:
-            # Busca campanhas para ver se o ID é 47, 45, etc.
-            df_camp = pd.read_sql(text("SELECT TOP 10 * FROM Campanhas"), conn)
+            print(f"\n👤 Analisando: {cli['nome']}")
+            print(f"   CPFs testados: {cpf_limpo} | {cpf_formatado}")
             
-            if not df_camp.empty:
-                print(f"   📋 Colunas: {list(df_camp.columns)}")
-                print(f"   📊 Amostra (IDs vs Nomes):")
-                # Mostra colunas que parecem ID e Nome
-                print(df_camp.head(10).to_string(index=False))
-            else:
-                print("   ⚠️ Tabela Campanhas vazia ou com nome diferente.")
-                
-        except Exception as e:
-            print(f"   ❌ Erro ao ler Campanhas: {e}")
-
-
-        # --- 3. TENTATIVA DE CRUZAMENTO (SIMULAÇÃO) ---
-        print("\n3️⃣  Simulação de Cruzamento (Movimentacoes)")
-        try:
-            # Vamos pegar uma movimentação qualquer e ver como ela liga Pessoa e Campanha
-            sql_cross = text("""
-                SELECT TOP 1 
-                    MoInadimplentesID, 
-                    MoCampanhasID,
-                    MoNumeroDocumento
-                FROM Movimentacoes
+            # Busca na tabela do Candiotto_DBA
+            sql = text("""
+                SELECT 
+                    NUMERO_CONTRATO, 
+                    PARCELA, 
+                    VENCIMENTO, 
+                    [VALOR ORIGINAL] as VALOR, 
+                    VALOR_PAGO,
+                    STATUS_TITULO
+                FROM [Candiotto_DBA].[dbo].[tabelatitulos]
+                WHERE CPF_CNPJ_CLIENTE = :cpf1 OR CPF_CNPJ_CLIENTE = :cpf2
+                ORDER BY VENCIMENTO DESC
             """)
-            df_cross = pd.read_sql(sql_cross, conn)
-            print("   Se conseguirmos ler Movimentacoes, a ligação é feita assim:")
-            print(df_cross.to_string(index=False))
             
-        except Exception as e:
-            print(f"   ❌ Erro ao ler Movimentacoes: {e}")
+            df = pd.read_sql(sql, conn, params={"cpf1": cpf_limpo, "cpf2": cpf_formatado})
+            
+            if not df.empty:
+                print(f"   ✅ SUCESSO! Encontrados {len(df)} registros nesta tabela.")
+                
+                # Resumo do que achou
+                abertos = df[ (df['VALOR_PAGO'].isnull()) | (df['VALOR_PAGO'] == 0) ]
+                pagos = df[ df['VALOR_PAGO'] > 0 ]
+                
+                print(f"      📂 Abertos: {len(abertos)}")
+                print(f"      💰 Pagos:   {len(pagos)}")
+                print(f"      📝 Status encontrados: {df['STATUS_TITULO'].unique()}")
+                
+                # Mostra amostra
+                print("\n   📊 Amostra de Dados:")
+                print(df.head(3).to_string(index=False))
+            else:
+                print("   ❌ NADA ENCONTRADO. A tabela 'tabelatitulos' não tem dados para este CPF.")
+                print("   👉 Conclusão: Se nem pelo CPF acha, o problema é na VIEW do banco de dados.")
 
 except Exception as e:
-    print(f"\n❌ ERRO CRÍTICO DE CONEXÃO: {e}")
-    print("Verifique se o engine_std está configurado corretamente no database.py")
+    print(f"\n❌ ERRO DE CONEXÃO: {e}")
+    print("Verifique se o Link Server [Candiotto_DBA] está acessível.")
 
 print("\n" + "="*60)

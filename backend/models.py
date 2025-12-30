@@ -28,11 +28,6 @@ class User(Base):
     user_campanhas = relationship("UserCampanhaAssociacao", back_populates="user")
     logs = relationship("ActivityLog", back_populates="user")
 
-    # --- CONFIGURAÇÃO DE POLIMORFISMO (A Mágica acontece aqui) ---
-    __mapper_args__ = {
-        'polymorphic_on': access_level,  # Coluna discriminadora
-        'polymorphic_identity': 'User'   # Identidade padrão (se não for negociador)
-    }
 
     @property
     def is_online(self):
@@ -41,16 +36,7 @@ class User(Base):
         delta = datetime.utcnow() - self.last_seen
         return delta.total_seconds() < 120
 
-# --- CLASSE EXCLUSIVA PARA NEGOCIADORES ---
-class Negociador(User):
-    """
-    Esta classe usa a MESMA tabela 'users', mas filtra automaticamente.
-    Ao fazer: session.query(Negociador).all()
-    O SQL gerado será: SELECT * FROM users WHERE access_level = 'Negociador'
-    """
-    __mapper_args__ = {
-        'polymorphic_identity': 'Negociador' 
-    }
+
 
 class Celula(Base):
     __tablename__ = 'celula'

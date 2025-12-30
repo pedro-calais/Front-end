@@ -1,3 +1,4 @@
+"""Authentication endpoints used by the login screen."""
 # routes/auth_routes.py
 import hashlib
 from datetime import datetime
@@ -8,6 +9,7 @@ from models import User
 
 auth_bp = Blueprint("auth_bp", __name__)
 
+# Login for web app (username/email + password).
 @auth_bp.route("/login", methods=["POST"])
 def login():
     try:

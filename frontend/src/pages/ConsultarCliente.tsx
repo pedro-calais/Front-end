@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Import do Link para o MCSA funcionar
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom"; 
 import {   
   Loader2, 
   ChevronRight, 
@@ -50,6 +50,7 @@ const ConsultarCliente = () => {
   // Detalhes (SPA)
   const [selectedCliente, setSelectedCliente] = useState<DetalhesCliente | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
 
   // --- AÇÕES ---
   const handleSearch = async (e: React.FormEvent) => {
@@ -68,23 +69,39 @@ const ConsultarCliente = () => {
     }
   };
 
-  const handleSelectCliente = async (id: number) => {
-    setLoadingDetail(true);
-    try {
-      const detalhes = await clienteService.getById(id.toString());
-      setSelectedCliente(detalhes);
-    } catch (error) {
-      console.error("Erro detalhes", error);
-    } finally {
-      setLoadingDetail(false);
-    }
+  const handleSelectCliente = (id: number) => {
+    setSelectedCliente(null);
+    setSelectedClienteId(id);
   };
 
   const handleNewSearch = () => {
     setSelectedCliente(null);
+    setSelectedClienteId(null);
+    setLoadingDetail(false);
     // Opcional: Se quiser limpar a busca anterior ao clicar em "Nova Consulta":
     // setTermo(""); setClientes([]); setBuscou(false);
   };
+
+  useEffect(() => {
+    if (selectedClienteId === null) return;
+    let ativo = true;
+
+    (async () => {
+      setLoadingDetail(true);
+      try {
+        const detalhes = await clienteService.getById(selectedClienteId.toString());
+        if (ativo) setSelectedCliente(detalhes);
+      } catch (error) {
+        console.error("Erro detalhes", error);
+      } finally {
+        if (ativo) setLoadingDetail(false);
+      }
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [selectedClienteId]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 pb-20">

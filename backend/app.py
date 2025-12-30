@@ -5,6 +5,7 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from sqlalchemy import inspect
+from routes.dashboard_routes import dashboard_bp
 
 # ✅ Centraliza configs/ambiente (não quebra imports antigos)
 from config.settings import setup_locale
@@ -46,11 +47,11 @@ except Exception as e:
     acionamentos_bp = None
     print(f"⚠️ acionamentos_routes não carregou: {e}")
 
-try:
-    from routes.dashboard_routes import dashboard_bp  # /api/*
-except Exception as e:
-    dashboard_bp = None
-    print(f"⚠️ dashboard_routes não carregou: {e}")
+#try:
+#    from routes.dashboard_routes import dashboard_bp  # /api/*
+#except Exception as e:
+#    dashboard_bp = None
+#    print(f"⚠️ dashboard_routes não carregou: {e}")
 
 
 def _debug_print_tables():

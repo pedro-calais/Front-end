@@ -1,3 +1,4 @@
+"""Metas (negociador) dashboard endpoints."""
 # routes/metas_routes.py
 import calendar
 from datetime import datetime
@@ -8,6 +9,7 @@ from models import TBAcompanhamento
 
 metas_bp = Blueprint("metas_bp", __name__)
 
+# Calcula composicao, caixa e metas do negociador no mes.
 @metas_bp.route("/negociador/dashboard-metas", methods=["POST"])
 def dashboard_metas():
     session = SessionLocal()

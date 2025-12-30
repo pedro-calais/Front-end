@@ -1,17 +1,18 @@
-# routes/dashboard_routes.py
+"""Dashboard, finance, and carteira endpoints used by web dashboards."""
 import calendar
 from flask import Blueprint, jsonify, request
-from datetime import datetime, timedelta
-import pandas as pd
+from datetime import datetime
 from sqlalchemy import text
-from database import SessionLocal, engine  # engine usado no composicao
+from database import SessionLocal, engine, engine_std
 from models import User, UserCampanha
-
 from config import CREDOR_VS_CAMPANHA
+
+# Importa a função  que conecta no banco Operacional (STD)
+from utilities.carteira_service import get_dashboard_carteira_real
 
 try:
     from utilities.financeiro_service import obter_dados_financeiros, get_negociadores_ativos, engine_fin
-    from utilities.carteira_service import obter_dados_carteira, get_dados_composicao_especifico
+    from utilities.carteira_service import obter_dados_carteira, get_dashboard_carteira_real
     from utilities.objetivo_service import obter_resumo_objetivos
     from utilities.utilitarios import ler_consulta_sql
     from utilities.conexao import executar_query
@@ -22,7 +23,6 @@ except Exception as e:
     get_negociadores_ativos = None
     engine_fin = None
     obter_dados_carteira = None
-    get_dados_composicao_especifico = None
     obter_resumo_objetivos = None
     ler_consulta_sql = None
     executar_query = None
@@ -30,6 +30,7 @@ except Exception as e:
 
 dashboard_bp = Blueprint("dashboard_bp", __name__)
 
+# Financeiro (dashboard financeiro).
 @dashboard_bp.route("/financeiro/dashboard", methods=["POST"])
 def get_dados_financeiros_route():
     try:
@@ -47,6 +48,7 @@ def get_dashboard_financeiro_get():
         return jsonify({"error": "financeiro_service indisponível"}), 500
     return jsonify(obter_dados_financeiros({}))
 
+# Dropdowns de credores/campanhas.
 @dashboard_bp.route("/api/lista-credores", methods=["GET"])
 def get_lista_credores():
     return jsonify(sorted(list(set(CREDOR_VS_CAMPANHA.keys()))))
@@ -58,6 +60,7 @@ def get_lista_campanhas():
         todas.extend(lista)
     return jsonify(sorted(list(set(todas))))
 
+# Resumo de objetivos (cards/totais do painel).
 @dashboard_bp.route("/api/resumo-objetivos", methods=["GET", "POST"])
 def get_resumo_objetivos_api():
     if not obter_resumo_objetivos:
@@ -65,6 +68,7 @@ def get_resumo_objetivos_api():
     filtros = request.json if request.method == "POST" else {}
     return jsonify(obter_resumo_objetivos(filtros, engine_fin))
 
+# Carteira (dados consolidados do financeiro/relatorios).
 @dashboard_bp.route("/api/dashboard-carteira", methods=["POST"])
 def get_dashboard_carteira_api():
     if not obter_dados_carteira:
@@ -90,153 +94,7 @@ def get_dashboard_carteira_api():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-def get_dados_composicao_especifico(filtros, engine):
-    """
-    CORRIGIDO: 
-    1. Filtra ID ou Nome (Resolve o problema de dados zerados).
-    2. Calcula regras de negócio (Novo, Inadimplido, Antecipado) via Python.
-    """
-    print(f"\n🚀 [COMPOSICAO] Iniciando cálculo inteligente...")
-
-    # 1. Definir Período
-    data_ref = filtros.get('data_referencia') 
-    hoje_real = datetime.now()
-    
-    # Tratamento de data robusto
-    if not data_ref or len(str(data_ref)) < 7:
-        data_ref = hoje_real.strftime('%Y-%m')
-
-    try:
-        ano, mes = map(int, str(data_ref).split('-')[:2])
-        ultimo_dia = calendar.monthrange(ano, mes)[1]
-    except:
-        ano, mes = hoje_real.year, hoje_real.month
-        ultimo_dia = 30
-
-    dt_inicio = f"{ano}-{mes:02d}-01"
-    dt_fim = f"{ano}-{mes:02d}-{ultimo_dia}"
-
-    # 2. Construção Dinâmica da Query
-    params = {'inicio': dt_inicio, 'fim': dt_fim}
-    filtro_sql = ""
-
-    # --- CORREÇÃO CRÍTICA AQUI ---
-    # O Frontend manda ID, mas o banco pode ter Nome ou ID.
-    # Vamos testar as duas colunas para garantir que traga dados.
-    if filtros.get('negociador'):
-        valor_negociador = str(filtros['negociador']).strip()
-        if valor_negociador:
-            # Tenta bater com o Nome OU com o ID do Operador
-            filtro_sql += " AND (NEGOCIADOR = :negociador OR CAST(CaOperadorProprietarioID AS VARCHAR) = :negociador)"
-            params['negociador'] = valor_negociador
-            print(f"   👤 Filtrando Negociador por: {valor_negociador}")
-    
-    if filtros.get('campanha'):
-        valor_campanha = str(filtros['campanha']).strip()
-        if valor_campanha:
-            # Tenta bater com Nome OU ID da campanha
-            filtro_sql += " AND (CAMPANHA = :campanha OR CAST(MoCampanhasID AS VARCHAR) = :campanha)"
-            params['campanha'] = valor_campanha
-
-    # 3. Query SQL (Traz dados brutos para processar no Python)
-    sql = text(f"""
-        SELECT 
-            Status,
-            ISNULL(Saldo, 0) as VALOR_PREVISTO,
-            ISNULL(MoValorRecebido, 0) as VALOR_PAGO,
-            Data_de_Acordo as VENCIMENTO,
-            Data_Recebimento as DATA_PAGAMENTO,
-            MoParcela
-        FROM RelatorioBase
-        WHERE (Data_de_Acordo BETWEEN :inicio AND :fim)
-           OR (Data_Recebimento BETWEEN :inicio AND :fim)
-           {filtro_sql}
-    """)
-
-    try:
-        with engine.connect() as conn:
-            df = pd.read_sql(sql, conn, params=params)
-        
-        print(f"   ✅ Query retornou {len(df)} linhas.")
-        
-        # Estrutura de Retorno (Zerada por padrão)
-        composicao = {
-            "casosNovos": 0.0, "acordosVencer": 0.0, 
-            "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "totalCasos": 0.0
-        }
-        realizado = {
-            "novosAcordos": 0.0, "colchaoAntecipado": 0.0, 
-            "colchaoCorrente": 0.0, "colchaoInadimplido": 0.0, "caixaTotal": 0.0
-        }
-
-        if df.empty:
-            return {"composicao": composicao, "realizado": realizado}
-
-        # 4. Processamento Lógico (Regras de Negócio)
-        
-        # Converter datas
-        df['VENCIMENTO'] = pd.to_datetime(df['VENCIMENTO'], errors='coerce')
-        df['DATA_PAGAMENTO'] = pd.to_datetime(df['DATA_PAGAMENTO'], errors='coerce')
-        
-        # Data de corte (hoje) para saber se é 'A Vencer' ou 'Inadimplido'
-        hoje_ts = pd.Timestamp(hoje_real.date()) 
-        
-        for _, row in df.iterrows():
-            v_prev = float(row['VALOR_PREVISTO'])
-            v_pago = float(row['VALOR_PAGO'])
-            dt_venc = row['VENCIMENTO']
-            dt_pag = row['DATA_PAGAMENTO']
-            
-            # Identifica Parcela 1 (Novos Casos)
-            parcela_str = str(row['MoParcela']).strip()
-            is_novo = parcela_str == '1' or parcela_str.startswith('1/') or parcela_str == '01'
-
-            # --- A. CARTEIRA (PREVISÃO) ---
-            if v_prev > 0:
-                composicao["totalCasos"] += v_prev
-                
-                # Definições baseadas em DATA (mais confiável que Status string)
-                is_vencido = pd.notnull(dt_venc) and dt_venc < hoje_ts
-                is_futuro = pd.notnull(dt_venc) and dt_venc >= hoje_ts
-                
-                if is_novo:
-                    composicao["casosNovos"] += v_prev
-                elif is_vencido:
-                    # Venceu antes de hoje e tem saldo = Inadimplido
-                    composicao["colchaoInadimplido"] += v_prev
-                elif is_futuro:
-                    # Vence hoje ou depois = A Vencer
-                    composicao["acordosVencer"] += v_prev
-                else:
-                    composicao["colchaoCorrente"] += v_prev
-
-            # --- B. CAIXA (REALIZADO) ---
-            if v_pago > 0:
-                realizado["caixaTotal"] += v_pago
-                
-                # Definições de Pagamento
-                is_antecipado = pd.notnull(dt_venc) and pd.notnull(dt_pag) and dt_pag < dt_venc
-                is_recuperado = pd.notnull(dt_venc) and pd.notnull(dt_pag) and dt_pag > dt_venc
-                
-                if is_novo:
-                     realizado["novosAcordos"] += v_pago
-                elif is_antecipado:
-                    realizado["colchaoAntecipado"] += v_pago
-                elif is_recuperado:
-                    realizado["colchaoInadimplido"] += v_pago
-                else:
-                    realizado["colchaoCorrente"] += v_pago
-
-        return {
-            "composicao": composicao,
-            "realizado": realizado
-        }
-
-    except Exception as e:
-        print(f"❌ Erro Lógica Composição: {e}")
-        return None
-
+# Carteira prevista (consulta SQL externa).
 @dashboard_bp.route("/api/composicao-carteira-prevista", methods=["GET"])
 def get_composicao_carteira_prevista():
     if not (ler_consulta_sql and executar_query):
@@ -270,6 +128,7 @@ def get_composicao_carteira_prevista():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Painel objetivo (placeholder/compatibilidade).
 @dashboard_bp.route("/painel-objetivo", methods=["POST"])
 def get_painel_objetivo():
     session = SessionLocal()
@@ -312,6 +171,7 @@ def opcoes_filtros():
     finally:
         db.close()
 
+# Resumo de celulas/negociadores.
 @dashboard_bp.route("/negociador_celula/resumo", methods=["GET"])
 def rota_resumo_celula():
     if not get_resumo_celulas:
@@ -339,4 +199,89 @@ def get_lista_negociadores_api():
         negociadores = get_negociadores_ativos()
         return jsonify(negociadores), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# Diagnostico de conexao com STD.
+@dashboard_bp.route("/api/db-ping", methods=["GET"])
+def db_ping():
+    if not engine_std:
+        return jsonify({"error": "engine_std indisponivel"}), 500
+
+    try:
+        with engine_std.connect() as conn:
+            inicio = datetime.now()
+            conn.execute(text("SELECT 1"))
+            tempo_ms = int((datetime.now() - inicio).total_seconds() * 1000)
+
+        return jsonify({
+            "status": "ok",
+            "db": "Candiotto_STD",
+            "elapsed_ms": tempo_ms,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Composicao de carteira (STD2016).
+@dashboard_bp.route("/api/composicao-carteira", methods=["GET", "POST", "OPTIONS"], strict_slashes=False)
+def composicao_carteira():
+    """
+    Rota NOVA que usa a conexão direta com o STD2016 (SQL CTE)
+    para preencher os cards coloridos e o gráfico de Carteira.
+    """
+    try:
+        if request.method == "OPTIONS":
+            return jsonify({}), 200
+
+        filtros = {}
+
+        # 1. Unifica a entrada (seja GET na URL ou POST no JSON)
+        if request.method == "GET":
+            referencia = request.args.get("referencia")
+            campanha_id = request.args.get("campanha_ID")
+            negociador_id = request.args.get("negociador_ID")
+            debug_top = request.args.get("debug_top")
+        else:
+            payload = request.get_json(silent=True) or {}
+            referencia = payload.get("data_referencia") or payload.get("referencia")
+            campanha_id = payload.get("campanha") or payload.get("campanha_ID")
+            negociador_id = payload.get("negociador") or payload.get("negociador_ID")
+            debug_top = payload.get("debug_top")
+
+        # 2. Prepara filtros para o Service
+        # O service espera YYYY-MM-DD, vamos garantir o dia 01
+        if referencia:
+            # Se vier só '2025-10', vira '2025-10-01'
+            if len(referencia) == 7:
+                filtros["data_referencia"] = referencia + "-01"
+            else:
+                filtros["data_referencia"] = referencia
+        else:
+             filtros["data_referencia"] = datetime.now().strftime('%Y-%m-01')
+
+        if campanha_id:
+            filtros["campanha_id"] = campanha_id
+        
+        if negociador_id:
+            filtros["negociador_id"] = negociador_id
+        
+        if debug_top:
+            filtros["debug_top"] = int(debug_top)
+
+        print(f"📡 Rota /api/composicao-carteira chamada. Filtros: {filtros}")
+
+        # 3. Chama a função nova que criamos no carteira_service.py
+        # Ela já sabe usar a engine_std internamente.
+        resultado = get_dashboard_carteira_real(filtros)
+        
+        if not resultado:
+            # Retorna estrutura vazia padrão para não quebrar o React
+            vazio = {
+                "composicao": {"casosNovos": 0, "acordosVencer": 0, "colchaoCorrente": 0, "colchaoInadimplido": 0, "totalCasos": 0},
+                "realizado": {"novosAcordos": 0, "colchaoAntecipado": 0, "colchaoCorrente": 0, "colchaoInadimplido": 0, "caixaTotal": 0}
+            }
+            return jsonify(vazio), 200
+
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        print(f"❌ Erro na Rota Composicao Carteira: {e}")
         return jsonify({"error": str(e)}), 500

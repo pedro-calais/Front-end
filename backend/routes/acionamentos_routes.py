@@ -1,3 +1,4 @@
+"""Acionamentos endpoints for list and export reports."""
 # routes/acionamentos_routes.py
 from flask import Blueprint, jsonify, request, Response
 from sqlalchemy import text
@@ -6,6 +7,7 @@ from datetime import datetime
 
 acionamentos_bp = Blueprint("acionamentos_bp", __name__)
 
+# Monta SQL base com filtros para listagem/exportacao.
 def query_acionamentos_base(filtros):
     data_inicio = filtros.get("data_inicio")
     data_fim = filtros.get("data_fim")
@@ -78,6 +80,7 @@ def listar_acionamentos():
     finally:
         session.close()
 
+# Exporta o mesmo filtro em CSV para download.
 @acionamentos_bp.route("/api/acionamentos/exportar", methods=["POST"])
 def exportar_acionamentos():
     import io

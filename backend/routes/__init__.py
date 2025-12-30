@@ -1,4 +1,5 @@
 # routes/__init__.py
+"""Blueprint registration for all route modules."""
 from .auth_routes import auth_bp
 from .users_routes import users_bp
 from .clickup_routes import clickup_bp
@@ -8,6 +9,7 @@ from .dashboard_routes import dashboard_bp
 from .metas_routes import metas_bp
 
 def register_routes(app):
+    # Centralized blueprint registration.
     app.register_blueprint(auth_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(clickup_bp)

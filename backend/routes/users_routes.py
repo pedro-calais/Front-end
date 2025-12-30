@@ -1,11 +1,13 @@
+"""User management endpoints for admin screens and dropdowns."""
 # routes/users_routes.py
 import hashlib
 from flask import Blueprint, jsonify, request
 from database import SessionLocal
-from models import User, Negociador
+from models import User
 
 users_bp = Blueprint("users_bp", __name__)
 
+# Listagem geral de usuarios (admin).
 @users_bp.route("/users", methods=["GET"])
 def list_users():
     session = SessionLocal()
@@ -24,6 +26,7 @@ def list_users():
     finally:
         session.close()
 
+# Cria novo usuario (admin).
 @users_bp.route("/users", methods=["POST"])
 def create_user():
     data = request.json or {}
@@ -54,6 +57,7 @@ def create_user():
     finally:
         session.close()
 
+# Atualiza ou remove usuario pelo id.
 @users_bp.route("/users/<int:user_id>", methods=["PUT", "DELETE"])
 def manage_user(user_id):
     session = SessionLocal()
@@ -87,23 +91,21 @@ def manage_user(user_id):
     finally:
         session.close()
 
+# Lista negociadores ativos para selects.
 @users_bp.route("/api/lista-negociadores", methods=["GET"])
 def list_negociadores_ativos():
     session = SessionLocal()
     try:
-        # A MÁGICA ACONTECE AQUI:
-        # 1. Usamos a classe 'Negociador' (o SQLAlchemy já filtra pelo type automaticamente)
-        # 2. Filtramos apenas os 'ativo == True' (ninguém quer ver demitido no filtro)
-        # 3. Ordenamos por nome para ficar bonito no select
         
-        negociadores = session.query(Negociador)\
-            .filter(Negociador.ativo == True)\
-            .order_by(Negociador.name)\
+        negociadores = session.query(User)\
+            .filter(User.access_level == 'Negociador')\
+            .filter(User.ativo == True)\
+            .order_by(User.name)\
             .all()
 
         return jsonify([{
-            "id": n.id,        # O ID continua sendo o da tabela users
-            "name": n.name,    # Nome do negociador
+            "id": n.id,
+            "name": n.name,
             "username": n.username
         } for n in negociadores])
         

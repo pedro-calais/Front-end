@@ -1,3 +1,4 @@
+"""ClickUp integration endpoints for chamados and pendencias."""
 # routes/clickup_routes.py
 import requests
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ except Exception as e:
 
 clickup_bp = Blueprint("clickup_bp", __name__)
 
+# Atualiza campo customizado em uma tarefa ClickUp.
 def update_custom_field(task_id, field_id, value):
     try:
         url = f"https://api.clickup.com/api/v2/task/{task_id}/field/{field_id}"
@@ -24,6 +26,7 @@ def update_custom_field(task_id, field_id, value):
     except Exception as e:
         print(f"⚠️ Erro ao atualizar campo {field_id}: {e}")
 
+# Cria chamado no ClickUp com anexos.
 @clickup_bp.route("/chamados/criar", methods=["POST"])
 def criar_chamado():
     if not processar_abertura_chamado:
@@ -37,6 +40,7 @@ def criar_chamado():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Retorna opcoes de formulario (responsaveis, demandas, campanhas).
 @clickup_bp.route("/chamados/opcoes", methods=["GET"])
 def obter_opcoes():
     lista_responsaveis = [{"label": k, "value": str(v)} for k, v in RESPONSAVEIS_ID.items()]
@@ -47,6 +51,7 @@ def obter_opcoes():
         "responsaveis": lista_responsaveis
     })
 
+# Lista chamados recentes para painels.
 @clickup_bp.route("/chamados/listar", methods=["GET"])
 def listar_chamados():
     try:
@@ -121,6 +126,7 @@ def listar_chamados():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Roadmap de pendencias (dashboard interno).
 @clickup_bp.route("/api/pendencias", methods=["GET"])
 def get_pendencias():
     if not listar_tarefas_roadmap:
@@ -131,6 +137,7 @@ def get_pendencias():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Conclui tarefa do roadmap.
 @clickup_bp.route("/api/pendencias/<task_id>/concluir", methods=["POST"])
 def rota_concluir_tarefa(task_id):
     try:

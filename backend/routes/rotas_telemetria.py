@@ -1,3 +1,4 @@
+"""Telemetry endpoints used by the web app for activity tracking."""
 from flask import Blueprint, request, jsonify
 from database import SessionLocal
 from models import User, ActivityLog
@@ -12,6 +13,7 @@ telemetry_bp = Blueprint('telemetry', __name__)
 # 1. ROTA HEARTBEAT (O React chama a cada 30s)
 @telemetry_bp.route('/heartbeat', methods=['POST'])
 def heartbeat():
+    # Frontend heartbeat to keep last_seen fresh.
     session = SessionLocal()
     try:
         data = request.json
@@ -37,6 +39,7 @@ def heartbeat():
 # 2. ROTA DE LOG DE ATIVIDADE (Chamada ao mudar de tela)
 @telemetry_bp.route('/log', methods=['POST'])
 def log_activity():
+    # Stores navigation/interaction events for reporting.
     session = SessionLocal()
     try:
         data = request.json
@@ -62,6 +65,7 @@ def log_activity():
 # 3. ROTA PARA VER QUEM ESTÁ ONLINE (Para o seu Dashboard Administrativo)
 @telemetry_bp.route('/online-users', methods=['GET'])
 def get_online_users():
+    # Admin view of who is online now.
     session = SessionLocal()
     try:
         # Pega todos os usuários ativos
@@ -91,6 +95,7 @@ from sqlalchemy import func, desc, extract # <--- Adicione extract
 
 @telemetry_bp.route('/manager/dashboard', methods=['GET'])
 def get_manager_dashboard():
+    # Aggregated dashboard for managers.
     session = SessionLocal()
     try:
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -192,6 +197,7 @@ def get_manager_dashboard():
 
 @telemetry_bp.route('/my-performance', methods=['POST'])
 def get_my_performance():
+    # Per-user performance snapshot.
     session = SessionLocal()
     try:
         data = request.json

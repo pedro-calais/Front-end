@@ -1,17 +1,56 @@
+"""Client lookup and detail endpoints used by /consultar-cliente."""
 # routes/clientes_routes.py
 import re
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text, or_
-from database import SessionLocal
+from database import SessionLocal, engine_std
 from models import Clientes
+from utilities.carteira_service import get_historico_ro_real
+from utilities.variaveis_globais import campanhas
 
 clientes_bp = Blueprint("clientes_bp", __name__)
 
+# Normaliza CPF/CNPJ para comparar com dados do legado.
 def limpar_documento(doc):
     if not doc:
         return ""
     return re.sub(r"[^0-9]", "", str(doc))
 
+def _resolver_campanha_id(campanha_valor: str):
+    if not campanha_valor:
+        return None
+
+    valor = str(campanha_valor).strip()
+    if valor.isdigit():
+        return int(valor)
+
+    codigo_match = re.search(r"\b\d{6}\b", valor)
+    if codigo_match:
+        codigo = codigo_match.group(0)
+        if codigo in campanhas:
+            return int(campanhas[codigo])
+
+    if engine_std:
+        try:
+            with engine_std.connect() as conn:
+                row = conn.execute(
+                    text(
+                        """
+                        SELECT TOP 1 Campanhas_ID
+                        FROM Campanhas WITH (NOLOCK)
+                        WHERE CaNome = :nome OR CaCodigo = :codigo
+                        """
+                    ),
+                    {"nome": valor, "codigo": valor},
+                ).fetchone()
+            if row:
+                return int(row[0])
+        except Exception:
+            pass
+
+    return None
+
+# Detalhes do cliente + titulos e historico de ROs.
 @clientes_bp.route("/clientes/<int:id>", methods=["GET"])
 def get_detalhe_cliente(id):
     session = SessionLocal()
@@ -79,6 +118,28 @@ def get_detalhe_cliente(id):
                 })
 
         historico = []
+        if engine_std:
+            pessoa_id = None
+            try:
+                with engine_std.connect() as conn:
+                    row = conn.execute(
+                        text(
+                            """
+                            SELECT TOP 1 Pessoas_ID
+                            FROM Pessoas WITH (NOLOCK)
+                            WHERE FPesCPF = :doc OR JPesCNPJ = :doc OR FPesCPF = :doc_limpo OR JPesCNPJ = :doc_limpo
+                            """
+                        ),
+                        {"doc": doc_original, "doc_limpo": doc_limpo},
+                    ).fetchone()
+                if row:
+                    pessoa_id = int(row[0])
+            except Exception:
+                pessoa_id = None
+
+            campanha_id = _resolver_campanha_id(cliente.campanha)
+            if pessoa_id and campanha_id:
+                historico = get_historico_ro_real(pessoa_id, campanha_id) or []
 
         return jsonify({
             "cliente": {
@@ -98,6 +159,7 @@ def get_detalhe_cliente(id):
     finally:
         session.close()
 
+# Busca simples usada pela tela de consulta.
 @clientes_bp.route("/clientes/buscar", methods=["GET"])
 def buscar_clientes():
     session = SessionLocal()

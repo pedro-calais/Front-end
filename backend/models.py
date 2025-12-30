@@ -13,27 +13,44 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
-    access_level = Column(String, nullable=False)
+    
+    # Esta coluna define quem é quem
+    access_level = Column(String, nullable=False) 
+    
     idNegociador = Column(Integer)
     ativo = Column(Boolean, default=True)
     email = Column(String)
-    last_login = Column(DateTime, nullable=True) # Data/Hora do login
-    last_seen = Column(DateTime, nullable=True)  # "Visto por último" (Heartbeat)
+    last_login = Column(DateTime, nullable=True)
+    last_seen = Column(DateTime, nullable=True)
 
     # Relacionamentos
     user_celulas = relationship("UserCelula", back_populates="user")
     user_campanhas = relationship("UserCampanhaAssociacao", back_populates="user")
     logs = relationship("ActivityLog", back_populates="user")
 
-   # Propriedade calculada (Não cria coluna no banco, é lógica Python)
+    # --- CONFIGURAÇÃO DE POLIMORFISMO (A Mágica acontece aqui) ---
+    __mapper_args__ = {
+        'polymorphic_on': access_level,  # Coluna discriminadora
+        'polymorphic_identity': 'User'   # Identidade padrão (se não for negociador)
+    }
+
     @property
     def is_online(self):
         if not self.last_seen:
             return False
-        # Calcula a diferença de tempo
         delta = datetime.utcnow() - self.last_seen
-        # Se foi visto nos últimos 120 segundos (2 min), está online
         return delta.total_seconds() < 120
+
+# --- CLASSE EXCLUSIVA PARA NEGOCIADORES ---
+class Negociador(User):
+    """
+    Esta classe usa a MESMA tabela 'users', mas filtra automaticamente.
+    Ao fazer: session.query(Negociador).all()
+    O SQL gerado será: SELECT * FROM users WHERE access_level = 'Negociador'
+    """
+    __mapper_args__ = {
+        'polymorphic_identity': 'Negociador' 
+    }
 
 class Celula(Base):
     __tablename__ = 'celula'

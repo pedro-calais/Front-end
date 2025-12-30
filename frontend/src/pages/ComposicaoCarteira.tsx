@@ -113,8 +113,14 @@ const ComposicaoCarteira = () => {
   useEffect(() => {
     const carregarFiltros = async () => {
       try {
-        const resUsers = await api.get('/users');
-        setListaNegociadores(resUsers.data.map((u: any) => ({ value: String(u.id), label: u.name })));
+        // --- ALTERAÇÃO AQUI: Usando a rota específica de negociadores ---
+        const resUsers = await api.get('/api/lista-negociadores');
+        
+        // Mapeando: ID -> value, Name -> label
+        setListaNegociadores(resUsers.data.map((u: any) => ({ 
+            value: String(u.id), 
+            label: u.name 
+        })));
         
         const resCamp = await api.get('/api/lista-campanhas');
         setListaCampanhas(resCamp.data.map((c: string) => ({ value: c, label: c })));
@@ -129,7 +135,7 @@ const ComposicaoCarteira = () => {
     carregarFiltros();
   }, []);
 
-  // --- BUSCA DE DADOS (SIMPLIFICADA) ---
+  // --- BUSCA DE DADOS ---
   const buscarDadosDashboard = async () => {
     setLoading(true);
     try {
@@ -137,16 +143,19 @@ const ComposicaoCarteira = () => {
       const params: Record<string, string> = {
         referencia: `${periodo}-01`
       };
+      
       if (selectedCampanha) {
         params.campanha_ID = selectedCampanha;
       }
+      
+      // Envia o ID selecionado no campo correto que o backend espera
       if (selectedNegociador) {
         params.negociador_ID = selectedNegociador;
       }
 
       console.log("Enviando filtros:", params);
 
-      // 2. Faz uma unica chamada GET para o Python (backend ja agrega)
+      // 2. Faz a chamada GET
       const response = await api.get('/api/composicao-carteira', { params });
       
       if (response.data) {

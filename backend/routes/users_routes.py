@@ -2,7 +2,7 @@
 import hashlib
 from flask import Blueprint, jsonify, request
 from database import SessionLocal
-from models import User
+from models import User, Negociador
 
 users_bp = Blueprint("users_bp", __name__)
 
@@ -83,6 +83,32 @@ def manage_user(user_id):
 
     except Exception as e:
         session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+@users_bp.route("/api/lista-negociadores", methods=["GET"])
+def list_negociadores_ativos():
+    session = SessionLocal()
+    try:
+        # A MÁGICA ACONTECE AQUI:
+        # 1. Usamos a classe 'Negociador' (o SQLAlchemy já filtra pelo type automaticamente)
+        # 2. Filtramos apenas os 'ativo == True' (ninguém quer ver demitido no filtro)
+        # 3. Ordenamos por nome para ficar bonito no select
+        
+        negociadores = session.query(Negociador)\
+            .filter(Negociador.ativo == True)\
+            .order_by(Negociador.name)\
+            .all()
+
+        return jsonify([{
+            "id": n.id,        # O ID continua sendo o da tabela users
+            "name": n.name,    # Nome do negociador
+            "username": n.username
+        } for n in negociadores])
+        
+    except Exception as e:
+        print(f"Erro ao listar negociadores: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         session.close()
